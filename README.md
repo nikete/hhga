@@ -1,6 +1,6 @@
 # HHGA
 
-![orb](https://raw.githubusercontent.com/ekg/hhga/master/images/orb.png)
+![orb](https://raw.githubusercontent.com/ekg/hhga/master/images/orb.jpg)
 
 ## Have Haplotypes Genotypes Alleles
 
