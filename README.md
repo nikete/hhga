@@ -34,25 +34,23 @@ aln4: ..
 
 Assume our mapping qualities for the alignments are aln1: 60, aln2: 20, aln3: 50, aln4: 30.
 
-We use six symbols to encode the MSA, `{ A, T, G, C, N, U }`, where `N` is the degenerate symbol (it could represent any of A, T, G, or C), and U is a gap symbol required to normalize the MSA into a matrix.
+We use six symbols to encode the MSA, `{ A, T, G, C, N, U, M }`, where `N` is the degenerate symbol (it could represent any of A, T, G, or C), `U` is a gap symbol required to normalize the MSA into a matrix, and `M` is a symbol indicating if we don't have any information at the position in the MSA.
 
 Assuming the genotype is true and there are a mixture of 3 different error probabilities for the bases in the reads, the feature space transformation of this site would be:
 
 ```txt
-1 |ref    1A:0 1T:1 1G:0 1C:0 1N:0 1U:0 2A:1 2T:0 2G:0 2C:0 2N:0 2U:0 3A:0 3T:1 3G:0 3C:0 3N:0 3U:0
-  |hap1   1A:0 1T:1 1G:0 1C:0 1N:0 1U:0 2A:1 2T:0 2G:0 2C:0 2N:0 2U:0 3A:0 3T:1 3G:0 3C:0 3N:0 3U:0
-  |hap2   1A:0 1T:1 1G:0 1C:0 1N:0 1U:0 2A:0 2T:0 2G:1 2C:0 2N:0 2U:0 3A:0 3T:1 3G:0 3C:0 3N:0 3U:0
+1 |ref    1T:1 2A:1 3T:1
+  |hap1   1T:1 2A:1 3T:1
+  |hap2   1T:1 2G:1 3T:1
   |mapq   aln1:60 aln2:20 aln3:50 aln4:30
   |strand aln1:1  aln2:0  aln3:1  aln4:0
-  |aln1   1A:0.02 1T:0.94 1G:0.02 1C:0.02 1N:0 1U:0 2A:0.91 2T:0.03 2G:0.03 2C:0.03 2N:0 2U:0 3A:0.003 3T:0.991 3G:0.003 3C:0.003 3N:0 3U:0
-  |aln2   1A:0.02 1T:0.94 1G:0.02 1C:0.02 1N:0 1U:0 2A:0.003 2T:0.003 2G:0.991 2C:0.003 2N:0 2U:0 3A:0.02 3T:0.94 3G:0.02 3C:0.02 3N:0 3U:0
-  |aln3   2A:0.02 2T:0.02 2G:0.94 2C:0.02 2N:0 2U:0 3A:0.02 3T:0.94 3G:0.02 3C:0.02 3N:0 3U:0
-  |aln4   1A:0.02 1T:0.94 1G:0.02 1C:0.02 1N:0 1U:0 2A:0.02 2T:0.02 2G:0.94 2C:0.02 2N:0 2U:0
+  |aln1   1A:0.02 1T:0.94 1G:0.02 1C:0.02 2A:0.91 2T:0.03 2G:0.03 2C:0.03 3A:0.003 3T:0.991 3G:0.003 3C:0.003
+  |aln2   1A:0.02 1T:0.94 1G:0.02 1C:0.02 2A:0.003 2T:0.003 2G:0.991 2C:0.003 3A:0.02 3T:0.94 3G:0.02 3C:0.02
+  |aln3   1M:1 2A:0.02 2T:0.02 2G:0.94 2C:0.02 3A:0.02 3T:0.94 3G:0.02 3C:0.02
+  |aln4   1A:0.02 1T:0.94 1G:0.02 1C:0.02 2A:0.02 2T:0.02 2G:0.94 2C:0.02 3M:1
 ```
 
 Newlines are included here only for legibility. This would be on one line of the output of HHGA.
-
-Note that missing data is handled by not including any labels for the missing portion. For instance, the 3rd and 4th alignments both do not cover the entire window, so we leave out any description of the data there in the namespaces of the output that require them.
 
 As in libSVM format, the first entry in the output defines the class of the example. By convention, we say the example is 1 if the haplotypes are correct, and 0 otherwise.
 
