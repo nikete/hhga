@@ -52,7 +52,7 @@ Assuming the genotype is true, there are a mixture of 3 different error probabil
 
 Newlines are included here only for legibility. This would be on one line of the output of HHGA.
 
-As in libSVM format, the first entry in the output defines the class of the example. By convention, we say the example is 1 if the haplotypes are correct, and 0 otherwise.
+As in libSVM format, the first entry in the output defines the class of the example. By convention, we say the example is 1 if the haplotypes are correct, and -1 otherwise.
 
 ## Usage
 
