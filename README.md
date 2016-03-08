@@ -32,18 +32,18 @@ aln3:  g,
 aln4: ..
 ```
 
-Assume our mapping qualities for the alignments are aln1: 60, aln2: 20, aln3: 50, aln4: 30.
-
 We use six symbols to encode the MSA, `{ A, T, G, C, N, U, M }`, where `N` is the degenerate symbol (it could represent any of A, T, G, or C), `U` is a gap symbol required to normalize the MSA into a matrix, and `M` is a symbol indicating if we don't have any information at the position in the MSA.
 
-Assuming the genotype is true and there are a mixture of 3 different error probabilities for the bases in the reads, the feature space transformation of this site would be:
+Mapping quality and the strandedness of the reads are represented in two namespaces (mapq and rev).
+
+Assuming the genotype is true, there are a mixture of 3 different error probabilities for the bases in the reads, two of the reads are on each strand, and the mapping qualities for the alignments are aln1: 60, aln2: 20, aln3: 50, aln4: 30, the feature space transformation of this site would be:
 
 ```txt
 1 |ref    1T:1 2A:1 3T:1
   |hap1   1T:1 2A:1 3T:1
   |hap2   1T:1 2G:1 3T:1
   |mapq   aln1:60 aln2:20 aln3:50 aln4:30
-  |strand aln1:1  aln2:0  aln3:1  aln4:0
+  |rev    aln1:1 aln3:1
   |aln1   1A:0.02 1T:0.94 1G:0.02 1C:0.02 2A:0.91 2T:0.03 2G:0.03 2C:0.03 3A:0.003 3T:0.991 3G:0.003 3C:0.003
   |aln2   1A:0.02 1T:0.94 1G:0.02 1C:0.02 2A:0.003 2T:0.003 2G:0.991 2C:0.003 3A:0.02 3T:0.94 3G:0.02 3C:0.02
   |aln3   1M:1 2A:0.02 2T:0.02 2G:0.94 2C:0.02 3A:0.02 3T:0.94 3G:0.02 3C:0.02
