@@ -39,28 +39,31 @@ Mapping quality and the strandedness of the reads are represented in two namespa
 Assuming the genotype is true, there are a mixture of 3 different error probabilities for the bases in the reads, two of the reads are on each strand, and the mapping qualities for the alignments are aln1: 60, aln2: 20, aln3: 50, aln4: 30, the feature space transformation of this site would be:
 
 ```txt
-1 |ref    1T:1 2A:1 3T:1
-  |hap1   1T:1 2A:1 3T:1
-  |hap2   1T:1 2G:1 3T:1
+1 |ref    T:1 A:1 T:1
+  |hap1   T:1 A:1 T:1
+  |hap2   T:1 G:1 T:1
   |mapq   aln1:60 aln2:20 aln3:50 aln4:30
-  |rev    aln1:1 aln3:1
-  |aln1   1A:0.02 1T:0.94 1G:0.02 1C:0.02 2A:0.91 2T:0.03 2G:0.03 2C:0.03 3A:0.003 3T:0.991 3G:0.003 3C:0.003
-  |aln2   1A:0.02 1T:0.94 1G:0.02 1C:0.02 2A:0.003 2T:0.003 2G:0.991 2C:0.003 3A:0.02 3T:0.94 3G:0.02 3C:0.02
-  |aln3   1M:1 2A:0.02 2T:0.02 2G:0.94 2C:0.02 3A:0.02 3T:0.94 3G:0.02 3C:0.02
-  |aln4   1A:0.02 1T:0.94 1G:0.02 1C:0.02 2A:0.02 2T:0.02 2G:0.94 2C:0.02 3M:1
+  |strand    aln1:1 aln2:1 aln3:1
+  |aln1   T:0.94 A:0.91 T:0.991
+  |aln2   T:0.94 G:0.991 T:0.94
+  |aln3   M:1 G:0.94 T:0.94
+  |aln4   T:0.94 G:0.94 M:1
 ```
 
 Newlines are included here only for legibility. This would be on one line of the output of HHGA.
 
 As in libSVM format, the first entry in the output defines the class of the example. By convention, we say the example is 1 if the haplotypes are correct, and -1 otherwise.
 
+
+
 ## Usage
 
 Sketch of usage. We extract the feature space representation using windows of size 100 at sites that are defined in the candidates in the variant input file. We use `truth.vcf.gz` to indicate which genotypes and alleles are true. All others in `vars.vcf.gz` are assumed false.
 
 ```bash
-hhga -t truth.vcf.gz -v vars.vcf.gz -w 100 -b aln.bam -f ref.fa >examples.hhga
+hhga -t truth.vcf.gz -v vars.vcf.gz -w 100 -b aln.bam -f ref.fa | vw --save_resume  --ngram 5 --skips 3 --loss_function logistic --interactions rhmsa
 ```
+
 
 The output can now be used in [Vowpal Wabbit](https://github.com/JohnLangford/vowpal_wabbit) and other systems which support the same input format.
 
