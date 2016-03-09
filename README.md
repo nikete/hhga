@@ -43,7 +43,7 @@ Assuming the genotype is true, there are a mixture of 3 different error probabil
   |hap1   T:1 A:1 T:1
   |hap2   T:1 G:1 T:1
   |mapq   aln1:60 aln2:20 aln3:50 aln4:30
-  |rev    aln1:1 aln2:1 aln3:1
+  |strand    aln1:1 aln2:1 aln3:1
   |aln1   T:0.94 A:0.91 T:0.991
   |aln2   T:0.94 G:0.991 T:0.94
   |aln3   M:1 G:0.94 T:0.94
@@ -54,10 +54,6 @@ Newlines are included here only for legibility. This would be on one line of the
 
 As in libSVM format, the first entry in the output defines the class of the example. By convention, we say the example is 1 if the haplotypes are correct, and -1 otherwise.
 
-## maxlikehood mode 
-
---relaltive 
-
 
 
 ## Usage
@@ -65,7 +61,7 @@ As in libSVM format, the first entry in the output defines the class of the exam
 Sketch of usage. We extract the feature space representation using windows of size 100 at sites that are defined in the candidates in the variant input file. We use `truth.vcf.gz` to indicate which genotypes and alleles are true. All others in `vars.vcf.gz` are assumed false.
 
 ```bash
-hhga -t truth.vcf.gz -v vars.vcf.gz -w 100 -b aln.bam -f ref.fa | vw --save_resume --sort_features --ngram 5 
+hhga -t truth.vcf.gz -v vars.vcf.gz -w 100 -b aln.bam -f ref.fa | vw --save_resume  --ngram 5 --skips 3 --loss_function logistic --interactions rhmsa
 ```
 
 
