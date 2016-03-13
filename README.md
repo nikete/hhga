@@ -28,13 +28,14 @@ We represent the MSA of the reads and the reference, the estimated per-base erro
 As an example, if this is a tview-like representation of a set of alignments at a putative SNP site, augmented with candidate haplotypes:
 
 ```txt
-ref:  TAT
-hap1: ...
-hap2: .G.
-aln1: ,,,
-aln2: .G.
-aln3:  g,
-aln4: ..
+           strand
+ref:  TA*T
+hap1: TA*T
+hap2: TGAT
+aln1: TA*T +
+aln2: TGAT +
+aln3:  GAT -
+aln4: TA   +
 ```
 
 We use six symbols to encode the MSA, `{ A, T, G, C, N, U, M }`, where `N` is the degenerate symbol (it could represent any of A, T, G, or C), `U` is a gap symbol required to normalize the MSA into a matrix, and `M` is a symbol indicating if we don't have any information at the position in the MSA.
@@ -44,15 +45,15 @@ Mapping quality and the strandedness of the reads are represented in two namespa
 Assuming the genotype is true, there are a mixture of 3 different error probabilities for the bases in the reads, two of the reads are on each strand, and the mapping qualities for the alignments are aln1: 60, aln2: 20, aln3: 50, aln4: 30, the feature space transformation of this site would be:
 
 ```txt
-1 |ref    T:1 A:1 T:1
-  |hap1   T:1 A:1 T:1
-  |hap2   T:1 G:1 T:1
+1 |ref    T:1 A:1 U:1 T:1
+  |hap1   T:1 A:1 U:1 T:1
+  |hap2   T:1 G:1 A:1 T:1
   |mapq   aln1:60 aln2:20 aln3:50 aln4:30
-  |strand    aln1:1 aln2:1 aln3:1
-  |aln1   T:0.94 A:0.91 T:0.991
-  |aln2   T:0.94 G:0.991 T:0.94
-  |aln3   M:1 G:0.94 T:0.94
-  |aln4   T:0.94 G:0.94 M:1
+  |strand aln1:1 aln2:1 aln4:1
+  |aln1   T:0.94 A:0.91  U:1    T:0.991
+  |aln2   T:0.94 G:0.991 A:0.92 T:0.94
+  |aln3   M:1    G:0.94  A:0.97 T:0.94
+  |aln4   T:0.94 A:0.94  M:1    M:1
 ```
 
 Newlines are included here only for legibility. This would be on one line of the output of HHGA.
