@@ -70,7 +70,17 @@ Sketch of usage. We extract the feature space representation using windows of si
 hhga -t truth.vcf.gz -v vars.vcf.gz -w 100 -b aln.bam -f ref.fa | vw --save_resume  --ngram 5 --skips 3 --loss_function logistic --interactions rhmsa
 ```
 
+## Building
 
+```
+git clone --recursive https://github.com/ekg/hhga.git
+cd hhga
+source ./source_me.sh
+make
+make test
+```
+
+The `hhga` executable is at `bin/hhga`.
 
 ## TODO
 
