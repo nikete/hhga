@@ -6,6 +6,8 @@
 
 ### A tool to prepare genome alignments and genotypes for consumption by the Vowpal Wabbit
 
+[![Build Status](https://travis-ci.org/ekg/hhga.svg)](https://travis-ci.org/ekg/hhga)
+
 ## Overview
 
 HHGA transforms genomic alignments and candidate haplotypes into a feature-space representation suitable for use by machine learning systems, in particular [Vowpal Wabbit](https://github.com/JohnLangford/vowpal_wabbit).
