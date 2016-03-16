@@ -32,8 +32,21 @@ void parse_region(const string& region,
                   string& startSeq,
                   int& startPos,
                   int& stopPos);
-void setRegion(const string& regionStr,
-               BamMultiReader& reader,
-               vcflib::VariantCallFile& vcffile);
+void set_region(BamMultiReader& reader, const string& region_str);
+void set_region(vcflib::VariantCallFile& vcffile, const string& region_str);
+
+class HHGA {
+public:
+    string chrom_name;
+    int start_pos;
+    int stop_pos;
+
+    typedef vcflib::VariantAllele allele_type;
+    set<allele_type> alleles;
+    vector<BamAlignment> alignments;
+    map<BamAlignment*, vector<allele_type> > alignment_alleles;
+    HHGA(const string& region_string, BamMultiReader& bam_reader, FastaReference& fasta_ref);
+    const string str(void);
+};
 
 }

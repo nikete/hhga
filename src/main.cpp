@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
     vector<string> inputFilenames;
     string vcf_file_name;
 
-    string regionStr;
+    string region_string;
 
     string fastaFile;
 
@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
             break;
 
         case 'r':
-            regionStr = optarg;
+            region_string = optarg;
             break;
 
         case 'f':
@@ -88,16 +88,24 @@ int main(int argc, char** argv) {
 
     if (fastaFile.empty()) {
         cerr << "no FASTA reference specified" << endl;
+        printUsage(argc, argv);
         return 1;
     }
 
     if (inputFilenames.empty()) {
         cerr << "no input files specified" << endl;
+        printUsage(argc, argv);
         return 1;
     }
 
-    BamMultiReader reader;
-    if (!reader.Open(inputFilenames)) {
+    if (region_string.empty()) {
+        cerr << "no target region given" << endl;
+        printUsage(argc, argv);
+        return 1;
+    }
+
+    BamMultiReader bam_reader;
+    if (!bam_reader.Open(inputFilenames)) {
         cerr << "could not open input BAM files" << endl;
         return 1;
     }
@@ -111,158 +119,13 @@ int main(int argc, char** argv) {
         }
     }
 
-    setRegion(regionStr, reader, vcf_file);
+    FastaReference fasta_ref;
+    fasta_ref.open(fastaFile);
 
-    // store the names of all the reference sequences in the BAM file
-    map<int, string> referenceIDToName;
-    vector<RefData> referenceSequences = reader.GetReferenceData();
-    int i = 0;
-    for (RefVector::iterator r = referenceSequences.begin(); r != referenceSequences.end(); ++r) {
-        referenceIDToName[i] = r->RefName;
-        ++i;
-    }
-
-    FastaReference fr;
-    fr.open(fastaFile);
-
-    long unsigned int alignedBases = 0;
-    long unsigned int mismatchCount = 0;
-    long unsigned int gapCount = 0;
-    map<int, long unsigned int> mismatches;
-    map<int, long unsigned int> gaps;
-
-    long int lowestReferenceBase = 0;
-    long unsigned int referenceBases = 0;
-    unsigned int currentRefSeqID = 0;
-
-    map<short, uint64_t> qual_hist;
-
-    BamAlignment al;
-    while (reader.GetNextAlignment(al)) {
-        if (al.IsMapped()) {
-
-            // record the qualities
-            for (string::iterator c = al.Qualities.begin(); c != al.Qualities.end(); ++c) {
-                ++qual_hist[qualityChar2ShortInt(*c)];
-            }
-            
-            long unsigned int endpos = al.GetEndPosition();
-            // this happens when we switch reference sequences
-            if (currentRefSeqID != al.RefID) {
-                //cout << "al.GetEndPosition() = " << endpos << "  lowestReferenceBase = " << lowestReferenceBase << "  reset" << endl;
-                currentRefSeqID = al.RefID;
-                referenceBases += lowestReferenceBase;
-                lowestReferenceBase = 0;
-            } else if (endpos > lowestReferenceBase) {
-                //cout << "al.GetEndPosition() = " << endpos << "  lowestReferenceBase = " << lowestReferenceBase << "  adding " << endpos - lowestReferenceBase << endl;
-                referenceBases += endpos - lowestReferenceBase;
-                lowestReferenceBase = endpos;
-            }
-
-            //cout << al.Position << endl;
-            //cout << al.AlignedBases << endl;
-            string refsequence = fr.getSubSequence(referenceIDToName[al.RefID], al.Position, al.GetEndPosition() - (al.Position - 1));
-            //cout << refsequence << endl;
-
-            alignedBases += al.QueryBases.size();
-
-            int rp = 0; int sp = 0;
-            vector<CigarOp>::const_iterator cigarIter = al.CigarData.begin();
-            vector<CigarOp>::const_iterator cigarEnd  = al.CigarData.end();
-            for ( ; cigarIter != cigarEnd; ++cigarIter ) {
-                unsigned int l = cigarIter->Length;
-                char t = cigarIter->Type;
-
-                if (t == 'M') { // match or mismatch
-
-                    int firstMismatch = -1;
-
-                    for (int i=0; i<l; i++) {
-
-                        // extract aligned base
-                        char b = al.QueryBases.at(rp);
-
-                        // get reference allele
-                        char sb = refsequence.at(sp);
-
-                        // record mismatch if we have a mismatch here
-                        if (firstMismatch >= 0) {
-                            if (b == sb) {
-                                // mismatch termination
-                                // register multi-base mismatch
-                                int length = rp - firstMismatch;
-                                //string qualstr = rQual.substr(rp - length, length);
-                                ++mismatches[length];
-                                mismatchCount += length;
-                                firstMismatch = -1;
-                            } else {
-                                // mismatch extension
-                            }
-                        } else {
-                            if (b != sb) {
-                                // mismatch state
-                                firstMismatch = rp;
-                            } else {
-                                // match state
-                            }
-                        }
-
-                        // update positions
-                        ++sp;
-                        ++rp;
-                    }
-
-                } else if (t == 'D') {
-                    ++gaps[-l];
-                    ++gapCount;
-                    sp += l;
-                } else if (t == 'I') {
-                    ++gaps[l];
-                    ++gapCount;
-                    rp += l;
-                } else if (t == 'S') {
-                    rp += l;
-                } else if (t == 'H') {
-                } else if (t == 'N') {
-                    sp += l;
-                    rp += l;
-                }
-            }
-        }
-    }
-
-    reader.Close();
-
-    cout << "reference bases:\t" << referenceBases << endl;
-    cout << "total aligned bases:\t" << alignedBases << endl;
-    cout << "mean alignment depth:\t" << (long double) alignedBases / (long double) referenceBases << endl;
-    cout << "total mismatched bases:\t" << mismatchCount << endl;
-    cout << "total gap bases:\t" << gapCount << endl;
-    cout << "mismatch rate per aligned bp:\t" << (long double) mismatchCount / (long double) alignedBases << endl;
-    cout << "gap rate per aligned bp:\t" << (long double) gapCount / (long double) alignedBases << endl;
-    cout << "mismatch + gap per aligned bp:\t" << (long double) ( gapCount + mismatchCount ) / (long double) alignedBases << endl;
-    cout << endl;
-
-    cout << "mismatch length distribution" << endl;
-    cout << "length\tcount\trate (per aligned base)" << endl;
-    for (map<int, long unsigned int>::iterator p = mismatches.begin(); p != mismatches.end(); ++p) {
-        cout << p->first << "\t" << p->second << "\t" << (long double) p->second / (long double) alignedBases << endl;
-    }
-    cout << endl;
-
-    cout << "gap length distribution:" << endl;
-    cout << "length\tcount\trate (per aligned base)" << endl;
-    for (map<int, long unsigned int>::iterator p = gaps.begin(); p != gaps.end(); ++p) {
-        cout << p->first << "\t" << p->second << "\t" << (long double) p->second / (long double) alignedBases << endl;
-    }
-
-    cout << endl;
-    cout << "quality histogram of alignmed reads" << endl;
-    cout << "#qual\tcount" << endl;
-    for (map<short, uint64_t>::const_iterator q = qual_hist.begin(); q != qual_hist.end(); ++q) {
-        cout << q->first << "\t" << q->second << endl;
-    }
-    //cout << endl;
+    // for now, just process the entire site at once
+    // objective is to build up
+    HHGA hhga(region_string, bam_reader, fasta_ref);
+    cout << hhga.str() << endl;
 
     return 0;
 

@@ -87,13 +87,11 @@ void parse_region(
     }
 }
 
-void setRegion(
-    const string& regionStr,
-    BamMultiReader& reader,
-    vcflib::VariantCallFile& vcffile) {
+void set_region(BamMultiReader& reader,
+                const string& region_str) {
 
     // parse the region string
-    if (!regionStr.empty()) {
+    if (!region_str.empty()) {
 
         map<string, int> refLength;
         map<string, int> refID;
@@ -110,7 +108,7 @@ void setRegion(
         int startPos;
         int stopPos;
 
-        parse_region(regionStr, startSeq, startPos, stopPos);
+        parse_region(region_str, startSeq, startPos, stopPos);
 
         if (stopPos == -1) {
             stopPos = refLength[startSeq];
@@ -119,16 +117,123 @@ void setRegion(
         int startSeqRefID = refID[startSeq];
 
         if (!reader.LocateIndexes()) {
-            cerr << "region specified, but could not open load BAM index" << endl;
+            cerr << "[hhga] could not load BAM index" << endl;
             exit(1);
         } else {
             reader.SetRegion(startSeqRefID, startPos, startSeqRefID, stopPos);
         }
+    }
+}
 
-        if (vcffile.is_open()) {
-            vcffile.setRegion(regionStr);
+void set_region(vcflib::VariantCallFile& vcffile, const string& region_str) {
+    if (vcffile.is_open()) {
+        vcffile.setRegion(region_str);
+    }
+}
+
+
+HHGA::HHGA(const string& region_str, BamMultiReader& bam_reader, FastaReference& fasta_ref) {
+
+    // store the names of all the reference sequences in the BAM file
+    map<int, string> referenceIDToName;
+    vector<RefData> referenceSequences = bam_reader.GetReferenceData();
+    int i = 0;
+    for (RefVector::iterator r = referenceSequences.begin(); r != referenceSequences.end(); ++r) {
+        referenceIDToName[i] = r->RefName;
+        ++i;
+    }
+
+    // parse the region string
+    parse_region(region_str, chrom_name, start_pos, stop_pos);
+
+    // set up our readers
+    set_region(bam_reader, region_str);
+
+    long int lowestReferenceBase = 0;
+    long unsigned int referenceBases = 0;
+    unsigned int currentRefSeqID = 0;
+
+    // get the alignments at the locus
+    BamAlignment aln;
+    while (bam_reader.GetNextAlignment(aln)) {
+        if (aln.IsMapped()) {
+            alignments.push_back(aln);
         }
     }
+
+    for (auto& aln : alignments) {
+        // iterate through the alignment
+        // converting it into a series of alleles
+
+        // record the qualities
+        //for (string::iterator c = aln.Qualities.begin(); c != al.Qualities.end(); ++c) {
+        //    ++qual_hist[qualityChar2ShortInt(*c)];
+        //
+
+        long unsigned int endpos = aln.GetEndPosition();
+        string refseq = fasta_ref.getSubSequence(referenceIDToName[aln.RefID],
+                                                 aln.Position,
+                                                 aln.GetEndPosition() - (aln.Position - 1));
+        const string& readseq = aln.QueryBases;
+        int rel_pos = aln.Position - this->start_pos;
+
+        int rp = 0; int sp = 0;
+
+        vector<allele_type>& aln_alleles = alignment_alleles[&aln];
+
+        vector<CigarOp>::const_iterator cigarIter = aln.CigarData.begin();
+        vector<CigarOp>::const_iterator cigarEnd  = aln.CigarData.end();
+        for ( ; cigarIter != cigarEnd; ++cigarIter ) {
+            unsigned int len = cigarIter->Length;
+            char t = cigarIter->Type;        
+            switch (t) {
+            case 'I':
+                aln_alleles.push_back(allele_type("", readseq.substr(sp, len), rp + rel_pos));
+                sp += len;
+                break;
+            case 'D':
+                aln_alleles.push_back(allele_type(refseq.substr(rp, len), "", rp + rel_pos));
+                rp += len;
+                break;
+            case 'M':
+                {
+                    for (int i = 0; i < len; ++i) {
+                        allele_type a = allele_type(refseq.substr(rp + i, 1),
+                                                    readseq.substr(sp + i, 1),
+                                                    rp + i + rel_pos);
+                        aln_alleles.push_back(a);
+                    }
+                }
+                rp += len;
+                sp += len;
+                break;
+            case 'S':
+                rp += len;
+                sp += len;
+                break;
+            default:
+                cerr << "do not recognize cigar element " << t <<":"<< len << endl;
+                break;
+            }
+
+        }
+    }
+}
+
+const string HHGA::str(void) {
+    //return std::to_string(alleles.size());
+    stringstream out;
+    for (auto& aln : alignments) {
+        out << "<<<<<----------------------------------------" << endl;
+        out << aln.Name << endl;
+        out << aln.QueryBases << endl;
+        for (auto& allele : alignment_alleles[&aln]) {
+           out << allele << ", ";
+        }
+        out << endl;
+        out << "----------------------------------------->>>>" << endl;
+    }
+    return out.str();
 }
 
 }
