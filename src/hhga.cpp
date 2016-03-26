@@ -51,8 +51,8 @@ long double float2phred(long double prob) {
 void parse_region(
     const string& region,
     string& startSeq,
-    int& startPos,
-    int& stopPos) {
+    int32_t& startPos,
+    int32_t& stopPos) {
 
     size_t foundFirstColon = region.find(":");
 
@@ -87,7 +87,7 @@ void parse_region(
     }
 }
 
-void set_region(BamMultiReader& reader,
+void set_region(BamTools::BamMultiReader& reader,
                 const string& region_str) {
 
     // parse the region string
@@ -97,8 +97,8 @@ void set_region(BamMultiReader& reader,
         map<string, int> refID;
 
         int id = 0;
-        RefVector references = reader.GetReferenceData();
-        for (RefVector::iterator r = references.begin(); r != references.end(); ++r) {
+        BamTools::RefVector references = reader.GetReferenceData();
+        for (BamTools::RefVector::iterator r = references.begin(); r != references.end(); ++r) {
             refLength[r->RefName] = r->RefLength;
             refID[r->RefName] = id++;
         }
@@ -132,82 +132,124 @@ void set_region(vcflib::VariantCallFile& vcffile, const string& region_str) {
 }
 
 
-HHGA::HHGA(const string& region_str, BamMultiReader& bam_reader, FastaReference& fasta_ref) {
+HHGA::HHGA(const string& region_str,
+           BamTools::BamMultiReader& bam_reader,
+           FastaReference& fasta_ref,
+           vcflib::VariantCallFile& vcf_file) {
 
     // store the names of all the reference sequences in the BAM file
     map<int, string> referenceIDToName;
-    vector<RefData> referenceSequences = bam_reader.GetReferenceData();
+    vector<BamTools::RefData> referenceSequences = bam_reader.GetReferenceData();
     int i = 0;
-    for (RefVector::iterator r = referenceSequences.begin(); r != referenceSequences.end(); ++r) {
+    for (BamTools::RefVector::iterator r = referenceSequences.begin(); r != referenceSequences.end(); ++r) {
         referenceIDToName[i] = r->RefName;
         ++i;
     }
 
-    // parse the region string
-    parse_region(region_str, chrom_name, start_pos, stop_pos);
+    int32_t begin_pos;
+    int32_t end_pos;
+    string seq_name;
+    parse_region(region_str, seq_name, begin_pos, end_pos);
+    int32_t center_pos = begin_pos + (end_pos - begin_pos) / 2;
+
+    // we'll use this later to cut and pad the matrix
+    size_t window_length = end_pos - begin_pos;
 
     // set up our readers
     set_region(bam_reader, region_str);
+
+    // and vcf
+    set_region(vcf_file, region_str);
 
     long int lowestReferenceBase = 0;
     long unsigned int referenceBases = 0;
     unsigned int currentRefSeqID = 0;
 
     // get the alignments at the locus
-    BamAlignment aln;
+    BamTools::BamAlignment aln;
     while (bam_reader.GetNextAlignment(aln)) {
         if (aln.IsMapped()) {
             alignments.push_back(aln);
         }
     }
+    // highest position
+    int32_t min_pos = alignments.front().Position;
+    int32_t max_pos = min_pos;
 
     for (auto& aln : alignments) {
+        int32_t endpos = aln.GetEndPosition();
+
+        min_pos = min(aln.Position, min_pos);
+        max_pos = max(endpos, max_pos);
         // iterate through the alignment
         // converting it into a series of alleles
 
         // record the qualities
-        //for (string::iterator c = aln.Qualities.begin(); c != al.Qualities.end(); ++c) {
-        //    ++qual_hist[qualityChar2ShortInt(*c)];
-        //
+        vector<prob_t> quals;
+        for (string::iterator c = aln.Qualities.begin(); c != aln.Qualities.end(); ++c) {
+            quals.push_back(
+                phred2float(
+                    qualityChar2ShortInt(*c)));
+        }
 
-        long unsigned int endpos = aln.GetEndPosition();
         string refseq = fasta_ref.getSubSequence(referenceIDToName[aln.RefID],
                                                  aln.Position,
                                                  aln.GetEndPosition() - (aln.Position - 1));
         const string& readseq = aln.QueryBases;
-        int rel_pos = aln.Position - this->start_pos;
+        int rel_pos = aln.Position - this->begin_pos;
 
         int rp = 0; int sp = 0;
 
-        vector<allele_type>& aln_alleles = alignment_alleles[&aln];
+        vector<allele_t>& aln_alleles = alignment_alleles[&aln];
 
-        vector<CigarOp>::const_iterator cigarIter = aln.CigarData.begin();
-        vector<CigarOp>::const_iterator cigarEnd  = aln.CigarData.end();
+        vector<BamTools::CigarOp>::const_iterator cigarIter = aln.CigarData.begin();
+        vector<BamTools::CigarOp>::const_iterator cigarEnd  = aln.CigarData.end();
         for ( ; cigarIter != cigarEnd; ++cigarIter ) {
             unsigned int len = cigarIter->Length;
             char t = cigarIter->Type;        
             switch (t) {
             case 'I':
-                aln_alleles.push_back(allele_type("", readseq.substr(sp, len), rp + rel_pos));
+            {
+                auto iprobs = insertion_probs(quals, sp, len);
+                for (int i = 0; i < len; ++i) {
+                    aln_alleles.push_back(
+                        allele_t("",
+                                 readseq.substr(sp, len),
+                                 rp + aln.Position,
+                                 iprobs[i]));
+
+                }
                 sp += len;
-                break;
+            }
+            break;
             case 'D':
-                aln_alleles.push_back(allele_type(refseq.substr(rp, len), "", rp + rel_pos));
-                rp += len;
-                break;
-            case 'M':
-                {
-                    for (int i = 0; i < len; ++i) {
-                        allele_type a = allele_type(refseq.substr(rp + i, 1),
-                                                    readseq.substr(sp + i, 1),
-                                                    rp + i + rel_pos);
-                        aln_alleles.push_back(a);
-                    }
+            {
+                auto dprobs = deletion_probs(quals, sp, len);
+                for (int i = 0; i < len; ++i) {
+                        aln_alleles.push_back(
+                            allele_t(refseq.substr(rp + i, 1),
+                                     "",
+                                     rp + i + aln.Position,
+                                     dprobs[i]));
                 }
                 rp += len;
-                sp += len;
-                break;
+            }
+            break;
+            case 'M':
+            {
+                for (int i = 0; i < len; ++i) {
+                    aln_alleles.push_back(
+                        allele_t(refseq.substr(rp + i, 1),
+                                 readseq.substr(sp + i, 1),
+                                 rp + i + aln.Position,
+                                 quals[sp+i]));
+                }
+            }
+            rp += len;
+            sp += len;
+            break;
             case 'S':
+                // we throw soft clips away
                 rp += len;
                 sp += len;
                 break;
@@ -215,25 +257,181 @@ HHGA::HHGA(const string& region_str, BamMultiReader& bam_reader, FastaReference&
                 cerr << "do not recognize cigar element " << t <<":"<< len << endl;
                 break;
             }
-
         }
     }
+
+    map<int32_t, size_t> pos_max_length;
+
+    // trim the reads to the right size and determine the maximum indel length at each reference position
+    for (auto a = alignment_alleles.begin(); a != alignment_alleles.end(); ++a) {
+        vector<allele_t>& aln_alleles = a->second;
+        aln_alleles.erase(std::remove_if(aln_alleles.begin(), aln_alleles.end(),
+                                         [&](const allele_t& allele) {
+                                             return allele.position < begin_pos || allele.position >= end_pos;
+                                         }),
+                          aln_alleles.end());
+        map<int32_t, size_t> pos_counts;
+        for (auto& allele : aln_alleles) {
+            ++pos_counts[allele.position];
+        }
+        // now record the indels
+        for (auto p : pos_counts) {
+            pos_max_length[p.first] = max(pos_max_length[p.first], p.second);
+        }
+    }
+
+    // maps position/indels into offsets
+    // pair<i, 0> -> reference
+    // pari<i, j> -> jth insertion after base
+    map<pair<int32_t, size_t>, size_t> pos_proj;
+    size_t j = 0;
+    for (auto p : pos_max_length) {
+        int32_t pos = p.first;
+        for (int32_t i = 0; i < p.second; ++i) {
+            pos_proj[make_pair(pos, i)] = j++;
+        }
+    }
+    for (auto p : pos_proj) {
+        cerr << p.first.first << ":" << p.first.second << " " << p.second << endl;
+    }
+    // put our center position back in the center
+    // and count out half windows on either side
+    // then trim/pad again
+
+    // re-center
+    // find the position halfway through our old center
+    // count one half window each way from it
+    // and record our limits
+
+    // re-strip out our limits
+
+    // left and right pad the shit outta the result
+    
 }
 
 const string HHGA::str(void) {
     //return std::to_string(alleles.size());
     stringstream out;
+    size_t i = 0;
     for (auto& aln : alignments) {
-        out << "<<<<<----------------------------------------" << endl;
-        out << aln.Name << endl;
-        out << aln.QueryBases << endl;
+        out << "|aln" << i++ << " ";
         for (auto& allele : alignment_alleles[&aln]) {
-           out << allele << ", ";
+           out << allele << " ";
         }
         out << endl;
-        out << "----------------------------------------->>>>" << endl;
     }
     return out.str();
+}
+
+/*
+const string HHGA::to_vw_format(void) {
+    stringstream out;
+    for (auto& allele : alignment_alleles[&aln]) {
+        out << allele << ", ";
+    }
+}
+*/
+
+
+vector<prob_t> deletion_probs(const vector<prob_t>& quals, size_t sp, size_t l) {
+    
+    // because deletions have no quality information,
+    // use the surrounding sequence quality as a proxy
+    // to provide quality scores of equivalent magnitude to insertions,
+    // take N bp, right-centered on the position of the deletion
+    // this function ensures that the window is fully contained within the read
+
+    int spanstart = 0;
+
+    // this is used to calculate the quality string adding 2bp grounds
+    // the indel in the surrounding sequence, which it is dependent
+    // upon
+    int L = l + 2;
+
+    // if the event is somehow longer than the read (???)
+    // then we need to bound it at the read length
+    if (L > quals.size()) {
+        L = quals.size();
+        spanstart = 0;
+    } else {
+        if (sp < (L / 2)) {
+            // if the read pointer is less than half of the deletion length
+            // we need to avoid running past the end of the read, so bound the spanstart
+            spanstart = 0;
+        } else {
+            spanstart = sp - (L / 2);
+        }
+        // set upper bound to the string length
+        if (spanstart + L > quals.size()) {
+            spanstart = quals.size() - L;
+        }
+    }
+
+    auto qual_begin = (quals.begin() + spanstart);
+    auto qual_end = qual_begin + L;
+
+    vector<prob_t> del_quals;
+    while (qual_begin != qual_end) {
+        del_quals.push_back(*qual_begin++);
+    }
+
+    return del_quals;
+}
+
+vector<prob_t> insertion_probs(const vector<prob_t>& quals, size_t sp, size_t l) {
+
+    // insertion quality is taken as the minimum of
+    // the inserted bases and the two nearest flanking ones
+    // this function ensures that the window is fully contained within the read
+
+    int spanstart = 0;
+        
+    // this is used to calculate the quality string adding 2bp grounds
+    // the indel in the surrounding sequence, which it is dependent
+    // upon
+    int L = l + 2;
+
+    // if the event is somehow longer than the read (???)
+    // then we need to bound it at the read length        
+    if (L > quals.size()) {
+        L = quals.size();
+        spanstart = 0;
+    } else {
+        // set lower bound to 0
+        if (sp < 1) {
+            spanstart = 0;
+        } else {
+            // otherwise set it to one back
+            spanstart = sp - 1;
+        }
+        // set upper bound to the string length
+        if (spanstart + L > quals.size()) {
+            spanstart = quals.size() - L;
+        }
+    }
+
+    auto qual_begin = (quals.begin() + spanstart);
+    auto qual_end = qual_begin + L;
+
+    vector<prob_t> ins_quals;
+    while (qual_begin != qual_end) {
+        ins_quals.push_back(*qual_begin++);
+    }
+
+    return ins_quals;
+}
+
+ostream& operator<<(ostream& out, allele_t& var) {
+    out << var.position << ":" << var.ref << "/" << var.alt << ":" << var.prob;
+    return out;
+}
+
+allele_t operator+(const allele_t& a, const allele_t& b) {
+    return allele_t(a.ref + b.ref, a.alt + b.alt, a.position, a.prob * b.prob);
+}
+
+bool operator<(const allele_t& a, const allele_t& b) {
+    return a.repr < b.repr;
 }
 
 }

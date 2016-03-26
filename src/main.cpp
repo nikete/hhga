@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    BamMultiReader bam_reader;
+    BamTools::BamMultiReader bam_reader;
     if (!bam_reader.Open(inputFilenames)) {
         cerr << "could not open input BAM files" << endl;
         return 1;
@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
 
     // for now, just process the entire site at once
     // objective is to build up
-    HHGA hhga(region_string, bam_reader, fasta_ref);
+    HHGA hhga(region_string, bam_reader, fasta_ref, vcf_file);
     cout << hhga.str() << endl;
 
     return 0;
