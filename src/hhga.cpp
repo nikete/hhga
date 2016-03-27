@@ -135,7 +135,10 @@ void set_region(vcflib::VariantCallFile& vcffile, const string& region_str) {
 HHGA::HHGA(const string& region_str,
            BamTools::BamMultiReader& bam_reader,
            FastaReference& fasta_ref,
-           vcflib::Variant& var) {
+           vcflib::Variant& var,
+           const string& class_label) {
+
+    label = class_label;
 
     // store the names of all the reference sequences in the BAM file
     map<int, string> referenceIDToName;
@@ -521,18 +524,86 @@ const string HHGA::str(void) {
 
 const string HHGA::vw(void) {
     stringstream out;
+    // write the class of the example
+    out << label << " ";
     // do the ref
+    out << "|ref ";
+    for (auto& allele : reference) {
+        out << allele.alt << ":" << allele.prob << " ";;
+    }
     // do the haps
+    size_t i = 0;
+    for (auto& hap : haplotypes) {
+        out << "|hap" << i++ << " ";
+        for (auto& allele : hap) {
+            out << allele.alt << ":" << allele.prob << " ";;
+        }
+    }
+
+    map<string, string>
+        mapq,
+        rev_strand,
+        mate_rev_strand,
+        duplicate,
+        failed_qc,
+        first_mate,
+        second_mate,
+        mate_mapped,
+        paired,
+        primary_aln,
+        proper_pair;
+    
     // do the strands
     // do the mapping probs
-    size_t i = 0;
+    i = 0;
     // do the alignments
     for (auto& aln : alignments) {
-        out << "|aln" << i++ << " ";
+        // skip removed alignments
+        if (alignment_alleles.find(&aln) == alignment_alleles.end()) continue;
+        auto name = "aln" + std::to_string(i++);
+        // handle mapping quality
+        mapq[name] = std::to_string(phred2float(min(aln.MapQuality, (uint16_t)60)));
+        // handle flags
+        if (aln.IsReverseStrand())     rev_strand[name] = "1";
+        if (aln.IsMateReverseStrand()) mate_rev_strand[name] = "1";
+        if (aln.IsDuplicate())         duplicate[name] = "1";
+        if (aln.IsFailedQC())          failed_qc[name] = "1";
+        if (aln.IsFirstMate())         first_mate[name] = "1";
+        if (aln.IsSecondMate())        second_mate[name] = "2";
+        if (aln.IsMateMapped())        mate_mapped[name] = "1";
+        if (aln.IsPaired())            paired[name] = "1";
+        if (aln.IsPrimaryAlignment())  primary_aln[name] = "1";
+        if (aln.IsProperPair())        proper_pair[name] = "1";
+    
+        out << "|" << name << " ";
         for (auto& allele : alignment_alleles[&aln]) {
             out << allele.alt << ":" << allele.prob << " ";;
         }
     }
+    // output alignment level flags
+    // feature namespaces taken: r, h, m, s, a, o, d, q, f, x, y, p, z, i
+    out << "|mapq ";
+    for (auto p : mapq) out << p.first << ":" << p.second << " ";
+    out << "|strand ";
+    for (auto p : rev_strand) out << p.first << ":" << p.second << " ";
+    out << "|ostrand ";
+    for (auto p : mate_rev_strand) out << p.first << ":" << p.second << " ";
+    out << "|dup ";
+    for (auto p : duplicate) out << p.first << ":" << p.second << " ";
+    out << "|qcfail ";
+    for (auto p : failed_qc) out << p.first << ":" << p.second << " ";
+    out << "|fmate ";
+    for (auto p : first_mate) out << p.first << ":" << p.second << " ";
+    out << "|xmate ";
+    for (auto p : second_mate) out << p.first << ":" << p.second << " ";
+    out << "|ymap ";
+    for (auto p : mate_mapped) out << p.first << ":" << p.second << " ";
+    out << "|paired ";
+    for (auto p : paired) out << p.first << ":" << p.second << " ";
+    out << "|zprimary ";
+    for (auto p : primary_aln) out << p.first << ":" << p.second << " ";
+    out << "|iproper ";
+    for (auto p : proper_pair) out << p.first << ":" << p.second << " ";
     return out.str();
 }
 

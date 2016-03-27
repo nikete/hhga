@@ -2,7 +2,7 @@
 
 hhga:=../bin/hhga
 
-all: test clean
+all: test #clean
 
 test: $(hhga)
 	prove -v t
@@ -10,5 +10,5 @@ test: $(hhga)
 $(hhga):
 	cd .. && $(MAKE) bin/hhga
 
-clean:
-	echo
+#clean:
+#	echo

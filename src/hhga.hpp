@@ -72,6 +72,9 @@ public:
     vector<alignment_t> alignments;
     map<alignment_t*, vector<allele_t> > alignment_alleles;
 
+    // the class label for the example
+    string label;
+    
     // the feature model
     vector<allele_t> reference;
     vector<vector<allele_t> > haplotypes; // haps/genotypes
@@ -88,7 +91,8 @@ public:
     HHGA(const string& region_str,
          BamTools::BamMultiReader& bam_reader,
          FastaReference& fasta_ref,
-         vcflib::Variant& var);
+         vcflib::Variant& var,
+         const string& class_label);
 
     const string str(void);
     const string vw(void);

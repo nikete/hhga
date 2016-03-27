@@ -13,6 +13,7 @@ void printUsage(int argc, char** argv) {
          << "    -b, --bam FILE        use this BAM as input (multiple allowed)" << endl
          << "    -r, --region REGION   limit output to those in this region (chr:start-end)" << endl
          << "    -t, --text-viz        make a human-readible, compact output" << endl
+         << "    -c, --class-label X   add this label (e.g. -1 for false, 1 for true)" << endl
          << endl
          << "Generates reports on the rate of putative mutations or errors in the input alignment data." << endl
          << "Alignments are read from the specified files, or stdin if none are specified" << endl
@@ -28,6 +29,7 @@ int main(int argc, char** argv) {
     string region_string;
     string fastaFile;
     string output_format = "vw";
+    string class_label;
 
     // parse command-line options
     int c;
@@ -42,12 +44,13 @@ int main(int argc, char** argv) {
             {"region", required_argument, 0, 'r'},
             {"fasta-reference", required_argument, 0, 'f'},
             {"text-viz", no_argument, 0, 't'},
+            {"class-label", no_argument, 0, 'c'},
             {0, 0, 0, 0}
         };
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long (argc, argv, "hb:r:f:v:t",
+        c = getopt_long (argc, argv, "hb:r:f:v:tc:",
                          long_options, &option_index);
 
         if (c == -1)
@@ -83,6 +86,10 @@ int main(int argc, char** argv) {
 
         case 't':
             output_format = "text-viz";
+            break;
+
+        case 'c':
+            class_label = optarg;
             break;
 
         default:
@@ -133,7 +140,7 @@ int main(int argc, char** argv) {
     vcflib::Variant var(vcf_file);
     while (vcf_file.getNextVariant(var)) {
         //cerr << "Got variant " << var << endl;
-        HHGA hhga(region_string, bam_reader, fasta_ref, var);
+        HHGA hhga(region_string, bam_reader, fasta_ref, var, class_label);
         if (output_format == "vw") {
             cout << hhga.vw() << endl;
         } else if (output_format == "text-viz") {
