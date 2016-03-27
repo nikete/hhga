@@ -20,6 +20,7 @@ using namespace std;
 #define PHRED_MAX 1000
 
 typedef double prob_t;
+typedef int32_t pos_t;
 
 class allele_t {
 public:
@@ -72,7 +73,7 @@ public:
     map<alignment_t*, vector<allele_t> > alignment_alleles;
 
     // the feature model
-    vector<vector<allele_t> > read_features;
+    vector<vector<allele_t> > alleles;
     vector<prob_t> mapping_qualities;
     vector<vector<allele_t> > haplotypes;
     vector<allele_t> reference;
@@ -84,6 +85,7 @@ public:
          vcflib::VariantCallFile& vcf_file);
 
     const string str(void);
+    const string vw(void);
 };
 
 }

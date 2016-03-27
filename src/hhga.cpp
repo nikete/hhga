@@ -214,7 +214,7 @@ HHGA::HHGA(const string& region_str,
                 for (int i = 0; i < len; ++i) {
                     aln_alleles.push_back(
                         allele_t("",
-                                 readseq.substr(sp, len),
+                                 readseq.substr(sp + i, 1),
                                  rp + aln.Position,
                                  iprobs[i]));
 
@@ -291,21 +291,78 @@ HHGA::HHGA(const string& region_str,
             pos_proj[make_pair(pos, i)] = j++;
         }
     }
+
     for (auto p : pos_proj) {
         cerr << p.first.first << ":" << p.first.second << " " << p.second << endl;
     }
-    // put our center position back in the center
-    // and count out half windows on either side
-    // then trim/pad again
+
+    // convert positions into the new frame
+    for (auto a = alignment_alleles.begin(); a != alignment_alleles.end(); ++a) {
+        vector<allele_t>& aln_alleles = a->second;
+        // adjust the allele positions
+        // if the new position is not the same as the last
+        // set j = 0
+        size_t j = 0;
+        pos_t last = aln_alleles.begin()->position;
+        for (auto& allele : aln_alleles) {
+            if (last != allele.position) j = 0;
+            last = allele.position;
+            allele.position = pos_proj[make_pair(allele.position, j++)];
+        }
+    }
+
+    // get the min/max of the vector
+    // the min should be 0
+    // the max tells us how wide the MSA should be
+    pos_t msav_min = pos_proj.begin()->second;
+    pos_t msav_max = pos_proj.rbegin()->second;
+
+    
+    // where is the new center
+    pos_t center = pos_proj[make_pair(center_pos, 0)];
+    cerr << "center is " << center << endl;
+    pos_t bal_min = max(center - window_length/2, (size_t)0);
+    pos_t bal_max = bal_min + window_length;
 
     // re-center
-    // find the position halfway through our old center
-    // count one half window each way from it
-    // and record our limits
-
     // re-strip out our limits
-
-    // left and right pad the shit outta the result
+    // make a base that's missing everywhere
+    for (auto a = alignment_alleles.begin(); a != alignment_alleles.end(); ++a) {
+        vector<allele_t>& aln_alleles = a->second;
+        // remove the bits outside the window
+        aln_alleles.erase(std::remove_if(aln_alleles.begin(), aln_alleles.end(),
+                                         [&](const allele_t& allele) {
+                                             return allele.position < bal_min || allele.position >= bal_max;
+                                         }),
+                          aln_alleles.end());
+        // pad the sides
+        pos_t aln_start = aln_alleles.front().position;
+        pos_t aln_end = aln_alleles.back().position;
+        vector<allele_t> padded;
+        // pad the beginning with "missing" features
+        for (int32_t q = bal_min; q != aln_start; ++q) {
+            padded.push_back(allele_t("", "M", q, 1));
+        }
+        // pad the gaps
+        bool first = true;
+        pos_t last = aln_alleles.front().position;
+        for (auto& allele : aln_alleles) {
+            if (!first &&
+                last+1 != allele.position) {
+                for (int32_t j = 0; j < allele.position - (last + 1); ++j) {
+                    padded.push_back(allele_t("", "U", j + last + 1, 1));
+                }
+            }
+            last = allele.position;
+            padded.push_back(allele);
+            first = false;
+        }
+        // pad the end with "missing" features
+        for (int32_t q = aln_end+1; q < bal_max; ++q) {
+            padded.push_back(allele_t("", "M", q, 1));
+        }
+        aln_alleles = padded;
+    }
     
 }
 
@@ -314,23 +371,45 @@ const string HHGA::str(void) {
     stringstream out;
     size_t i = 0;
     for (auto& aln : alignments) {
-        out << "|aln" << i++ << " ";
+        if (aln.IsReverseStrand())     out << "←"; else out << "→";
+        if (aln.IsMateReverseStrand()) out << "↖"; else out << "↗";
+        if (aln.IsDuplicate())         out << "☣"; else out << "⌘";
+        if (aln.IsFailedQC())          out << "☍"; else out << "☯";
+        if (aln.IsFirstMate())         out << "1"; // else out << " ";
+        if (aln.IsSecondMate())        out << "2"; //else out << " ";
+        if (aln.IsMapped())            out << "☺"; else out << "☹";
+        if (aln.IsMateMapped())        out << "☻"; else out << "☹";
+        if (aln.IsPaired())            out << "♊"; else out << "♈";
+        if (aln.IsPrimaryAlignment())  out << "★"; else out << "☆";
+        if (aln.IsProperPair())        out << "⚤"; else out << "✗";
+        out << "  ";
         for (auto& allele : alignment_alleles[&aln]) {
-           out << allele << " ";
+            if (allele.alt == "M") out << " ";
+            else if (allele.alt == "U") out << "-";
+            else out << allele.alt;
         }
+        out << " " << phred2float(aln.MapQuality);
         out << endl;
     }
     return out.str();
 }
 
-/*
-const string HHGA::to_vw_format(void) {
+const string HHGA::vw(void) {
     stringstream out;
-    for (auto& allele : alignment_alleles[&aln]) {
-        out << allele << ", ";
+    // do the ref
+    // do the haps
+    // do the strands
+    // do the mapping probs
+    size_t i = 0;
+    // do the alignments
+    for (auto& aln : alignments) {
+        out << "|aln" << i++ << " ";
+        for (auto& allele : alignment_alleles[&aln]) {
+            out << allele.alt << ":" << allele.prob << " ";;
+        }
     }
+    return out.str();
 }
-*/
 
 
 vector<prob_t> deletion_probs(const vector<prob_t>& quals, size_t sp, size_t l) {

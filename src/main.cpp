@@ -12,6 +12,7 @@ void printUsage(int argc, char** argv) {
          << "    -f, --fasta-reference FILE  the reference sequence" << endl
          << "    -b, --bam FILE        use this BAM as input (multiple allowed)" << endl
          << "    -r, --region REGION   limit output to those in this region (chr:start-end)" << endl
+         << "    -t, --text-viz        make a human-readible, compact output" << endl
          << endl
          << "Generates reports on the rate of putative mutations or errors in the input alignment data." << endl
          << "Alignments are read from the specified files, or stdin if none are specified" << endl
@@ -24,10 +25,9 @@ int main(int argc, char** argv) {
 
     vector<string> inputFilenames;
     string vcf_file_name;
-
     string region_string;
-
     string fastaFile;
+    string output_format = "vw";
 
     // parse command-line options
     int c;
@@ -41,12 +41,13 @@ int main(int argc, char** argv) {
             {"vcf", required_argument, 0, 'v'},
             {"region", required_argument, 0, 'r'},
             {"fasta-reference", required_argument, 0, 'f'},
+            {"text-viz", no_argument, 0, 't'},
             {0, 0, 0, 0}
         };
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long (argc, argv, "hb:r:f:v:",
+        c = getopt_long (argc, argv, "hb:r:f:v:t",
                          long_options, &option_index);
 
         if (c == -1)
@@ -78,6 +79,10 @@ int main(int argc, char** argv) {
 
         case 'f':
             fastaFile = optarg;
+            break;
+
+        case 't':
+            output_format = "text-viz";
             break;
 
         default:
@@ -125,7 +130,12 @@ int main(int argc, char** argv) {
     // for now, just process the entire site at once
     // objective is to build up
     HHGA hhga(region_string, bam_reader, fasta_ref, vcf_file);
-    cout << hhga.str() << endl;
+
+    if (output_format == "vw") {
+        cout << hhga.vw() << endl;
+    } else if (output_format == "text-viz") {
+        cout << hhga.str() << endl;
+    }
 
     return 0;
 
