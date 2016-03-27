@@ -82,7 +82,7 @@ public:
     HHGA(const string& region_str,
          BamTools::BamMultiReader& bam_reader,
          FastaReference& fasta_ref,
-         vcflib::VariantCallFile& vcf_file);
+         vcflib::Variant& var);
 
     const string str(void);
     const string vw(void);

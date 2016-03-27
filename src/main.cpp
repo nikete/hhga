@@ -129,12 +129,16 @@ int main(int argc, char** argv) {
 
     // for now, just process the entire site at once
     // objective is to build up
-    HHGA hhga(region_string, bam_reader, fasta_ref, vcf_file);
-
-    if (output_format == "vw") {
-        cout << hhga.vw() << endl;
-    } else if (output_format == "text-viz") {
-        cout << hhga.str() << endl;
+    set_region(vcf_file, region_string);
+    vcflib::Variant var(vcf_file);
+    while (vcf_file.getNextVariant(var)) {
+        //cerr << "Got variant " << var << endl;
+        HHGA hhga(region_string, bam_reader, fasta_ref, var);
+        if (output_format == "vw") {
+            cout << hhga.vw() << endl;
+        } else if (output_format == "text-viz") {
+            cout << hhga.str() << endl;
+        }
     }
 
     return 0;

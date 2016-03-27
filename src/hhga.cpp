@@ -135,7 +135,8 @@ void set_region(vcflib::VariantCallFile& vcffile, const string& region_str) {
 HHGA::HHGA(const string& region_str,
            BamTools::BamMultiReader& bam_reader,
            FastaReference& fasta_ref,
-           vcflib::VariantCallFile& vcf_file) {
+           vcflib::Variant& var) {
+    //vcflib::VariantCallFile& vcf_file) {
 
     // store the names of all the reference sequences in the BAM file
     map<int, string> referenceIDToName;
@@ -159,7 +160,7 @@ HHGA::HHGA(const string& region_str,
     set_region(bam_reader, region_str);
 
     // and vcf
-    set_region(vcf_file, region_str);
+    //set_region(vcf_file, region_str);
 
     long int lowestReferenceBase = 0;
     long unsigned int referenceBases = 0;
