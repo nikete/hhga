@@ -247,6 +247,9 @@ HHGA::HHGA(size_t window_length,
                 // we throw soft clips away
                 sp += len;
                 break;
+            case 'H':
+                // clipped sequence not present in the read
+                break;
             default:
                 cerr << "do not recognize cigar element " << t <<":"<< len << endl;
                 break;
@@ -300,7 +303,11 @@ HHGA::HHGA(size_t window_length,
         for (auto& g : gt) {
             //cerr << g.first << "->" << g.second << endl;
             // add a haplotype for the allele
-            haplotypes.push_back(vhaps[var.alleles[g.first]]);
+            if (g.first != vcflib::NULL_ALLELE) {
+                for (size_t i = 0; i < g.second; ++i){ 
+                    haplotypes.push_back(vhaps[var.alleles[g.first]]);
+                }
+            }
         }
         //cerr << gtstr << endl;
     }
