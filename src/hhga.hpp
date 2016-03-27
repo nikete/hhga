@@ -73,10 +73,16 @@ public:
     map<alignment_t*, vector<allele_t> > alignment_alleles;
 
     // the feature model
+    vector<allele_t> reference;
+    vector<vector<allele_t> > haplotypes; // haps/genotypes
     vector<vector<allele_t> > alleles;
     vector<prob_t> mapping_qualities;
-    vector<vector<allele_t> > haplotypes;
-    vector<allele_t> reference;
+
+    // helpers for construction 
+    vector<allele_t> pad_alleles(vector<allele_t> aln_alleles,
+                                 pos_t bal_min, pos_t bal_max);
+    void project_positions(vector<allele_t>& aln_alleles,
+                           map<pair<int32_t, size_t>, size_t>& pos_proj);
 
     // construct the hhga of a particular region
     HHGA(const string& region_str,

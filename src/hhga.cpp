@@ -136,7 +136,6 @@ HHGA::HHGA(const string& region_str,
            BamTools::BamMultiReader& bam_reader,
            FastaReference& fasta_ref,
            vcflib::Variant& var) {
-    //vcflib::VariantCallFile& vcf_file) {
 
     // store the names of all the reference sequences in the BAM file
     map<int, string> referenceIDToName;
@@ -155,12 +154,10 @@ HHGA::HHGA(const string& region_str,
 
     // we'll use this later to cut and pad the matrix
     size_t window_length = end_pos - begin_pos;
+    string window_ref_seq = fasta_ref.getSubSequence(seq_name, begin_pos, window_length);
 
     // set up our readers
     set_region(bam_reader, region_str);
-
-    // and vcf
-    //set_region(vcf_file, region_str);
 
     long int lowestReferenceBase = 0;
     long unsigned int referenceBases = 0;
@@ -261,6 +258,12 @@ HHGA::HHGA(const string& region_str,
         }
     }
 
+    // make the reference haplotype
+    for (size_t i = 0; i < window_length; ++i) {
+        string base = window_ref_seq.substr(i, 1);
+        reference.push_back(allele_t(base, base, begin_pos + i, 1));
+    }
+
     map<int32_t, size_t> pos_max_length;
 
     // trim the reads to the right size and determine the maximum indel length at each reference position
@@ -293,23 +296,23 @@ HHGA::HHGA(const string& region_str,
         }
     }
 
+    /*
+    map<size_t, pair<int32_t, size_t> > inv_pos_proj;
     for (auto p : pos_proj) {
-        cerr << p.first.first << ":" << p.first.second << " " << p.second << endl;
+        inv_pos_proj[p.second] = p.first;
+        //cerr << p.first.first << ":" << p.first.second << " " << p.second << endl;
     }
+    */
 
     // convert positions into the new frame
     for (auto a = alignment_alleles.begin(); a != alignment_alleles.end(); ++a) {
-        vector<allele_t>& aln_alleles = a->second;
-        // adjust the allele positions
-        // if the new position is not the same as the last
-        // set j = 0
-        size_t j = 0;
-        pos_t last = aln_alleles.begin()->position;
-        for (auto& allele : aln_alleles) {
-            if (last != allele.position) j = 0;
-            last = allele.position;
-            allele.position = pos_proj[make_pair(allele.position, j++)];
-        }
+        project_positions(a->second, pos_proj);
+    }
+    // same for ref
+    project_positions(reference, pos_proj);
+    // and genotype/haps
+    for (auto& hap : haplotypes) {
+        project_positions(hap, pos_proj);
     }
 
     // get the min/max of the vector
@@ -317,7 +320,6 @@ HHGA::HHGA(const string& region_str,
     // the max tells us how wide the MSA should be
     pos_t msav_min = pos_proj.begin()->second;
     pos_t msav_max = pos_proj.rbegin()->second;
-
     
     // where is the new center
     pos_t center = pos_proj[make_pair(center_pos, 0)];
@@ -327,49 +329,81 @@ HHGA::HHGA(const string& region_str,
 
     // re-center
     // re-strip out our limits
-    // make a base that's missing everywhere
+    // add the missing bases
+    // add the gap bases
     for (auto a = alignment_alleles.begin(); a != alignment_alleles.end(); ++a) {
-        vector<allele_t>& aln_alleles = a->second;
-        // remove the bits outside the window
-        aln_alleles.erase(std::remove_if(aln_alleles.begin(), aln_alleles.end(),
-                                         [&](const allele_t& allele) {
-                                             return allele.position < bal_min || allele.position >= bal_max;
-                                         }),
-                          aln_alleles.end());
-        // pad the sides
-        pos_t aln_start = aln_alleles.front().position;
-        pos_t aln_end = aln_alleles.back().position;
-        vector<allele_t> padded;
-        // pad the beginning with "missing" features
-        for (int32_t q = bal_min; q != aln_start; ++q) {
-            padded.push_back(allele_t("", "M", q, 1));
-        }
-        // pad the gaps
-        bool first = true;
-        pos_t last = aln_alleles.front().position;
-        for (auto& allele : aln_alleles) {
-            if (!first &&
-                last+1 != allele.position) {
-                for (int32_t j = 0; j < allele.position - (last + 1); ++j) {
-                    padded.push_back(allele_t("", "U", j + last + 1, 1));
-                }
-            }
-            last = allele.position;
-            padded.push_back(allele);
-            first = false;
-        }
-        // pad the end with "missing" features
-        for (int32_t q = aln_end+1; q < bal_max; ++q) {
-            padded.push_back(allele_t("", "M", q, 1));
-        }
-        aln_alleles = padded;
+        a->second = pad_alleles(a->second, bal_min, bal_max);
     }
+    reference = pad_alleles(reference, bal_min, bal_max);
+
+    // get our new reference coordinates
+    // and build up the reference haplotype
+    // handling padding
     
+    // build up the alternate haplotypes for the samples in the file
+}
+
+void HHGA::project_positions(vector<allele_t>& aln_alleles,
+                             map<pair<int32_t, size_t>, size_t>& pos_proj) {
+    // adjust the allele positions
+    // if the new position is not the same as the last
+    // set j = 0
+    size_t j = 0;
+    pos_t last = aln_alleles.begin()->position;
+    for (auto& allele : aln_alleles) {
+        if (last != allele.position) j = 0;
+        last = allele.position;
+        allele.position = pos_proj[make_pair(allele.position, j++)];
+    }
+}
+
+vector<allele_t> HHGA::pad_alleles(vector<allele_t> aln_alleles,
+                                   pos_t bal_min, pos_t bal_max) {
+    // remove the bits outside the window
+    aln_alleles.erase(std::remove_if(aln_alleles.begin(), aln_alleles.end(),
+                                     [&](const allele_t& allele) {
+                                         return allele.position < bal_min || allele.position >= bal_max;
+                                     }),
+                      aln_alleles.end());
+    // pad the sides
+    pos_t aln_start = aln_alleles.front().position;
+    pos_t aln_end = aln_alleles.back().position;
+    vector<allele_t> padded;
+    // pad the beginning with "missing" features
+    for (int32_t q = bal_min; q != aln_start; ++q) {
+        padded.push_back(allele_t("", "M", q, 1));
+    }
+    // pad the gaps
+    bool first = true;
+    pos_t last = aln_alleles.front().position;
+    for (auto& allele : aln_alleles) {
+        if (!first &&
+            last+1 != allele.position) {
+            for (int32_t j = 0; j < allele.position - (last + 1); ++j) {
+                padded.push_back(allele_t("", "U", j + last + 1, 1));
+            }
+        }
+        last = allele.position;
+        padded.push_back(allele);
+        first = false;
+    }
+    // pad the end with "missing" features
+    for (int32_t q = aln_end+1; q < bal_max; ++q) {
+        padded.push_back(allele_t("", "M", q, 1));
+    }
+    return padded;
 }
 
 const string HHGA::str(void) {
     //return std::to_string(alleles.size());
     stringstream out;
+    out << "reference   ";
+    for (auto& allele : reference) {
+        if (allele.alt == "M") out << " ";
+        else if (allele.alt == "U") out << "-";
+        else out << allele.alt;
+    }
+    out << endl;
     size_t i = 0;
     for (auto& aln : alignments) {
         if (aln.IsReverseStrand())     out << "←"; else out << "→";
