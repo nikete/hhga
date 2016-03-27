@@ -513,7 +513,7 @@ const string HHGA::str(void) {
             else if (allele.alt == "U") out << "-";
             else out << allele.alt;
         }
-        out << " " << phred2float(aln.MapQuality);
+        out << " " << aln.MapQuality;
         out << " " << aln.Name;
         out << endl;
     }
