@@ -213,7 +213,7 @@ HHGA::HHGA(const string& region_str,
                     aln_alleles.push_back(
                         allele_t("",
                                  readseq.substr(sp + i, 1),
-                                 rp + aln.Position,
+                                 rp + aln.Position-1,
                                  iprobs[i]));
 
                 }
@@ -264,6 +264,51 @@ HHGA::HHGA(const string& region_str,
         reference.push_back(allele_t(base, base, begin_pos + i, 1));
     }
 
+    // make each alt into a haplotype
+    map<string, vector<allele_t> > vhaps;
+    /*
+    auto& vref = vhaps[var.ref];
+    for (size_t i = 0; i < var.ref.size(); ++i) {
+        string base = var.ref.substr(i, 1);
+        vref.push_back(allele_t(base, base, var.position-1 + i, 1));
+    }
+    */
+
+    // handle out input haplotypes
+    // note that parsedalternates is giving us 1-based positions
+    for (auto& p : var.parsedAlternates()) {
+        auto& valleles = vhaps[p.first];
+        for (auto& a : p.second) {
+            cerr << a << endl;
+            if (a.ref == a.alt && a.alt.size() > 1) {
+                // break it apart
+                for (size_t i = 0; i < a.ref.size(); ++i) {
+                    valleles.push_back(allele_t(a.ref.substr(i,1), a.alt.substr(i,1), a.position+i-1, 1));
+                }
+            } else {
+                // cluster insertions behind the previous base
+                if (a.ref.empty()) {
+                    valleles.push_back(allele_t(a.ref, a.alt, a.position-2, 1));
+                } else {
+                    valleles.push_back(allele_t(a.ref, a.alt, a.position-1, 1));
+                }
+            }
+        }
+    }
+    
+    // for each sample
+    // get the genotype
+    for (auto& s : var.samples) {
+        auto& gtstr = s.second["GT"].front();
+        auto gt = vcflib::decomposeGenotype(gtstr);
+        for (auto& g : gt) {
+            //cerr << g.first << "->" << g.second << endl;
+            // add a haplotype for the allele
+            haplotypes.push_back(vhaps[var.alleles[g.first]]);
+        }
+        //cerr << gtstr << endl;
+    }
+
     map<int32_t, size_t> pos_max_length;
 
     // trim the reads to the right size and determine the maximum indel length at each reference position
@@ -276,6 +321,18 @@ HHGA::HHGA(const string& region_str,
                           aln_alleles.end());
         map<int32_t, size_t> pos_counts;
         for (auto& allele : aln_alleles) {
+            ++pos_counts[allele.position];
+        }
+        // now record the indels
+        for (auto p : pos_counts) {
+            pos_max_length[p.first] = max(pos_max_length[p.first], p.second);
+        }
+    }
+
+    // do for the alternate haps too
+    for (auto& v : vhaps) {
+        map<int32_t, size_t> pos_counts;
+        for (auto& allele : v.second) {
             ++pos_counts[allele.position];
         }
         // now record the indels
@@ -335,6 +392,9 @@ HHGA::HHGA(const string& region_str,
         a->second = pad_alleles(a->second, bal_min, bal_max);
     }
     reference = pad_alleles(reference, bal_min, bal_max);
+    for (auto& hap : haplotypes) {
+        hap = pad_alleles(hap, bal_min, bal_max);
+    }
 
     // get our new reference coordinates
     // and build up the reference haplotype
@@ -404,6 +464,15 @@ const string HHGA::str(void) {
         else out << allele.alt;
     }
     out << endl;
+    for (auto& hap : haplotypes) {
+        out << "hap         ";
+        for (auto& allele : hap) {
+            if (allele.alt == "M") out << " ";
+            else if (allele.alt == "U") out << "-";
+            else out << allele.alt;
+        }
+        out << endl;
+    }
     size_t i = 0;
     for (auto& aln : alignments) {
         if (aln.IsReverseStrand())     out << "←"; else out << "→";
