@@ -11,7 +11,8 @@ void printUsage(int argc, char** argv) {
          << "    -h, --help            this dialog" << endl
          << "    -f, --fasta-reference FILE  the reference sequence" << endl
          << "    -b, --bam FILE        use this BAM as input (multiple allowed)" << endl
-         << "    -r, --region REGION   limit output to those in this region (chr:start-end)" << endl
+         << "    -w, --window-size N   use a fixed window of this size in the MSA matrix" << endl
+         << "    -r, --region REGION   limit variants to those in this region (chr:start-end)" << endl
          << "    -t, --text-viz        make a human-readible, compact output" << endl
          << "    -c, --class-label X   add this label (e.g. -1 for false, 1 for true)" << endl
          << endl
@@ -30,6 +31,7 @@ int main(int argc, char** argv) {
     string fastaFile;
     string output_format = "vw";
     string class_label;
+    size_t window_size = 50;
 
     // parse command-line options
     int c;
@@ -45,12 +47,13 @@ int main(int argc, char** argv) {
             {"fasta-reference", required_argument, 0, 'f'},
             {"text-viz", no_argument, 0, 't'},
             {"class-label", no_argument, 0, 'c'},
+            {"window-size", required_argument, 0, 'w'},
             {0, 0, 0, 0}
         };
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long (argc, argv, "hb:r:f:v:tc:",
+        c = getopt_long (argc, argv, "hb:r:f:v:tc:w:",
                          long_options, &option_index);
 
         if (c == -1)
@@ -92,6 +95,10 @@ int main(int argc, char** argv) {
             class_label = optarg;
             break;
 
+        case 'w':
+            window_size = atoi(optarg);
+            break;
+
         default:
             return 1;
             break;
@@ -106,12 +113,6 @@ int main(int argc, char** argv) {
 
     if (inputFilenames.empty()) {
         cerr << "no input files specified" << endl;
-        printUsage(argc, argv);
-        return 1;
-    }
-
-    if (region_string.empty()) {
-        cerr << "no target region given" << endl;
         printUsage(argc, argv);
         return 1;
     }
@@ -134,13 +135,19 @@ int main(int argc, char** argv) {
     FastaReference fasta_ref;
     fasta_ref.open(fastaFile);
 
-    // for now, just process the entire site at once
-    // objective is to build up
-    set_region(vcf_file, region_string);
+    // if we've got a limiting region, use it
+    if (!region_string.empty()) {
+        set_region(vcf_file, region_string);
+    }
+    // iterate through all the vcf records, building one hhga matrix for each
     vcflib::Variant var(vcf_file);
     while (vcf_file.getNextVariant(var)) {
         //cerr << "Got variant " << var << endl;
-        HHGA hhga(region_string, bam_reader, fasta_ref, var, class_label);
+        HHGA hhga(window_size,
+                  bam_reader,
+                  fasta_ref,
+                  var,
+                  class_label);
         if (output_format == "vw") {
             cout << hhga.vw() << endl;
         } else if (output_format == "text-viz") {

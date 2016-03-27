@@ -88,40 +88,33 @@ void parse_region(
 }
 
 void set_region(BamTools::BamMultiReader& reader,
-                const string& region_str) {
+                const string& startSeq,
+                int startPos,
+                int stopPos) {
+
+    map<string, int> refLength;
+    map<string, int> refID;
+
+    int id = 0;
+    BamTools::RefVector references = reader.GetReferenceData();
+    for (BamTools::RefVector::iterator r = references.begin(); r != references.end(); ++r) {
+        refLength[r->RefName] = r->RefLength;
+        refID[r->RefName] = id++;
+    }
 
     // parse the region string
-    if (!region_str.empty()) {
 
-        map<string, int> refLength;
-        map<string, int> refID;
+    if (stopPos == -1) {
+        stopPos = refLength[startSeq];
+    }
 
-        int id = 0;
-        BamTools::RefVector references = reader.GetReferenceData();
-        for (BamTools::RefVector::iterator r = references.begin(); r != references.end(); ++r) {
-            refLength[r->RefName] = r->RefLength;
-            refID[r->RefName] = id++;
-        }
+    int startSeqRefID = refID[startSeq];
 
-        // parse the region string
-        string startSeq;
-        int startPos;
-        int stopPos;
-
-        parse_region(region_str, startSeq, startPos, stopPos);
-
-        if (stopPos == -1) {
-            stopPos = refLength[startSeq];
-        }
-
-        int startSeqRefID = refID[startSeq];
-
-        if (!reader.LocateIndexes()) {
-            cerr << "[hhga] could not load BAM index" << endl;
-            exit(1);
-        } else {
-            reader.SetRegion(startSeqRefID, startPos, startSeqRefID, stopPos);
-        }
+    if (!reader.LocateIndexes()) {
+        cerr << "[hhga] could not load BAM index" << endl;
+        exit(1);
+    } else {
+        reader.SetRegion(startSeqRefID, startPos, startSeqRefID, stopPos);
     }
 }
 
@@ -132,7 +125,7 @@ void set_region(vcflib::VariantCallFile& vcffile, const string& region_str) {
 }
 
 
-HHGA::HHGA(const string& region_str,
+HHGA::HHGA(size_t window_length,
            BamTools::BamMultiReader& bam_reader,
            FastaReference& fasta_ref,
            vcflib::Variant& var,
@@ -149,18 +142,16 @@ HHGA::HHGA(const string& region_str,
         ++i;
     }
 
-    int32_t begin_pos;
-    int32_t end_pos;
-    string seq_name;
-    parse_region(region_str, seq_name, begin_pos, end_pos);
-    int32_t center_pos = begin_pos + (end_pos - begin_pos) / 2;
+    int32_t begin_pos = var.position-1 - window_length/2;
+    int32_t end_pos = begin_pos + window_length;
+    string seq_name = var.sequenceName;
+    int32_t center_pos = var.position-1;//begin_pos + (end_pos - begin_pos) / 2;
 
     // we'll use this later to cut and pad the matrix
-    size_t window_length = end_pos - begin_pos;
     string window_ref_seq = fasta_ref.getSubSequence(seq_name, begin_pos, window_length);
 
     // set up our readers
-    set_region(bam_reader, region_str);
+    set_region(bam_reader, seq_name, begin_pos, end_pos);
 
     long int lowestReferenceBase = 0;
     long unsigned int referenceBases = 0;

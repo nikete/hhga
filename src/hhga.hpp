@@ -1,3 +1,6 @@
+#ifndef HHGA_H
+#define HHGA_H
+
 #include <map>
 #include <vector>
 #include <string>
@@ -56,7 +59,10 @@ void parse_region(const string& region,
                   string& startSeq,
                   int32_t& startPos,
                   int32_t& stopPos);
-void set_region(BamTools::BamMultiReader& reader, const string& region_str);
+void set_region(BamTools::BamMultiReader& reader,
+                const string& startSeq,
+                int startPos,
+                int stopPos);
 void set_region(vcflib::VariantCallFile& vcffile, const string& region_str);
 vector<prob_t> deletion_probs(const vector<prob_t>& quals, size_t sp, size_t l);
 vector<prob_t> insertion_probs(const vector<prob_t>& quals, size_t sp, size_t l);
@@ -88,7 +94,7 @@ public:
                            map<pair<int32_t, size_t>, size_t>& pos_proj);
 
     // construct the hhga of a particular region
-    HHGA(const string& region_str,
+    HHGA(size_t window_size,
          BamTools::BamMultiReader& bam_reader,
          FastaReference& fasta_ref,
          vcflib::Variant& var,
@@ -99,3 +105,5 @@ public:
 };
 
 }
+
+#endif
