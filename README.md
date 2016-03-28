@@ -30,9 +30,9 @@ We represent the MSA of the reads and the reference, the estimated per-base erro
 As an example, if this is a tview-like representation of a set of alignments at a putative SNP site, augmented with candidate haplotypes. Generated via `hhga -b minigiab/9251-9252.bam -f minigiab/q.fa -v minigiab/h.vcf.gz -r q:9251-9252 -w 20 -t` from the `test/` directory.
 
 ```txt
-reference   ATTGTGCCAAGTTCTTTCTT
-hap                   GTTCT     
-hap                   G----     
+reference     ATTGTGCCAAGTTCTTTCTT
+hap                     GTTCT     
+hap                     G----     
 ←↗⌘☯2☺☻♊★⚤  AT                   60 chr22.bin8.cram:166:8383
 ←↗⌘☯2☺☻♊★⚤  ATTGT                60 chr22.bin8.cram:166:8410
 →↖⌘☯2☺☻♊★⚤  ATTGTGCCAAGTTCTTTC   60 chr22.bin8.cram:166:8436
