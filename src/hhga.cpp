@@ -509,16 +509,16 @@ const string HHGA::str(void) {
         // skip removed alignments
         if (alignment_alleles.find(&aln) == alignment_alleles.end()) continue;
         // print out the stuff
-        if (aln.IsReverseStrand())     out << "s"; else out << " ";
-        if (aln.IsMateReverseStrand()) out << "o"; else out << " ";
-        if (aln.IsDuplicate())         out << "d"; else out << " ";
-        if (aln.IsFailedQC())          out << "q"; else out << " ";
-        if (aln.IsFirstMate())         out << "f"; else out << " ";
-        if (aln.IsSecondMate())        out << "x"; else out << " ";
-        if (aln.IsMateMapped())        out << "y"; else out << " ";
-        if (aln.IsPaired())            out << "p"; else out << " ";
-        if (aln.IsPrimaryAlignment())  out << "z"; else out << " ";
-        if (aln.IsProperPair())        out << "i"; else out << " ";
+        if (aln.IsReverseStrand())     out << "S"; else out << "s";
+        if (aln.IsMateReverseStrand()) out << "O"; else out << "o";
+        if (aln.IsDuplicate())         out << "D"; else out << "d";
+        if (aln.IsFailedQC())          out << "Q"; else out << "q";
+        if (aln.IsFirstMate())         out << "F"; else out << "f";
+        if (aln.IsSecondMate())        out << "X"; else out << "x";
+        if (aln.IsMateMapped())        out << "Y"; else out << "y";
+        if (aln.IsPaired())            out << "P"; else out << "p";
+        if (aln.IsPrimaryAlignment())  out << "Z"; else out << "z";
+        if (aln.IsProperPair())        out << "I"; else out << "i";
         out << "  ";
         for (auto& allele : alignment_alleles[&aln]) {
             if (allele.alt == "M") out << " ";
@@ -550,19 +550,6 @@ const string HHGA::vw(void) {
         }
     }
 
-    map<string, string>
-        mapq,
-        rev_strand,
-        mate_rev_strand,
-        duplicate,
-        failed_qc,
-        first_mate,
-        second_mate,
-        mate_mapped,
-        paired,
-        primary_aln,
-        proper_pair;
-    
     // do the strands
     // do the mapping probs
     i = 0;
@@ -571,49 +558,25 @@ const string HHGA::vw(void) {
         // skip removed alignments
         if (alignment_alleles.find(&aln) == alignment_alleles.end()) continue;
         auto name = "aln" + std::to_string(i++);
-        // handle mapping quality
-        mapq[name] = std::to_string(1-phred2float(min(aln.MapQuality, (uint16_t)60)));
-        // handle flags
-        if (aln.IsReverseStrand())     rev_strand[name] = "1";
-        if (aln.IsMateReverseStrand()) mate_rev_strand[name] = "1";
-        if (aln.IsDuplicate())         duplicate[name] = "1";
-        if (aln.IsFailedQC())          failed_qc[name] = "1";
-        if (aln.IsFirstMate())         first_mate[name] = "1";
-        if (aln.IsSecondMate())        second_mate[name] = "1";
-        if (aln.IsMateMapped())        mate_mapped[name] = "1";
-        if (aln.IsPaired())            paired[name] = "1";
-        if (aln.IsPrimaryAlignment())  primary_aln[name] = "1";
-        if (aln.IsProperPair())        proper_pair[name] = "1";
-    
         out << "|" << name << " ";
+        // handle mapping quality
+        out << "mapqual:" << 1-phred2float(min(aln.MapQuality, (uint16_t)60)) << " ";
+        // handle flags
+        if (aln.IsReverseStrand())     out << "strand:1"; else out << "strand:0"; out << " ";
+        if (aln.IsMateReverseStrand()) out << "ostrand:1"; else out << "ostrand:0"; out << " ";
+        if (aln.IsDuplicate())         out << "dup:1"; else out << "dup:0"; out << " ";
+        if (aln.IsFailedQC())          out << "qcfail:1"; else out << "qcfail:0"; out << " ";
+        if (aln.IsFirstMate())         out << "fmate:1"; else out << "fmate:0"; out << " ";
+        if (aln.IsSecondMate())        out << "xmate:1"; else out << "xmate:0"; out << " ";
+        if (aln.IsMateMapped())        out << "ymap:1"; else out << "ymap:0"; out << " ";
+        if (aln.IsPaired())            out << "paired:1"; else out << "paired:0"; out << " ";
+        if (aln.IsPrimaryAlignment())  out << "zprimary:1"; else out << "zprimary:0"; out << " ";
+        if (aln.IsProperPair())        out << "iproper:1"; else out << "iproper:0"; out << " ";
+        // now alleles
         for (auto& allele : alignment_alleles[&aln]) {
             out << allele.alt << ":" << allele.prob << " ";;
         }
     }
-    // output alignment level flags
-    // feature namespaces taken: r, h, m, s, a, o, d, q, f, x, y, p, z, i
-    out << "|mapq ";
-    for (auto p : mapq) out << p.first << ":" << p.second << " ";
-    out << "|strand ";
-    for (auto p : rev_strand) out << p.first << ":" << p.second << " ";
-    out << "|ostrand ";
-    for (auto p : mate_rev_strand) out << p.first << ":" << p.second << " ";
-    out << "|dup ";
-    for (auto p : duplicate) out << p.first << ":" << p.second << " ";
-    out << "|qcfail ";
-    for (auto p : failed_qc) out << p.first << ":" << p.second << " ";
-    out << "|fmate ";
-    for (auto p : first_mate) out << p.first << ":" << p.second << " ";
-    out << "|xmate ";
-    for (auto p : second_mate) out << p.first << ":" << p.second << " ";
-    out << "|ymap ";
-    for (auto p : mate_mapped) out << p.first << ":" << p.second << " ";
-    out << "|paired ";
-    for (auto p : paired) out << p.first << ":" << p.second << " ";
-    out << "|zprimary ";
-    for (auto p : primary_aln) out << p.first << ":" << p.second << " ";
-    out << "|iproper ";
-    for (auto p : proper_pair) out << p.first << ":" << p.second << " ";
     return out.str();
 }
 
