@@ -30,20 +30,20 @@ We represent the MSA of the reads and the reference, the estimated per-base erro
 As an example, if this is a tview-like representation of a set of alignments at a putative SNP site, augmented with candidate haplotypes. Generated via `hhga -b minigiab/9251-9252.bam -f minigiab/q.fa -v minigiab/h.vcf.gz -r q:9251-9252 -w 20 -t` from the `test/` directory.
 
 ```txt
-reference    ATTGTGCCAAGTTCTTTCTT
-hap                    GTTCT     
-hap                    G----     
-←↗⌘☯2☺☻♊★⚤  AT                   60 chr22.bin8.cram:166:8383
-←↗⌘☯2☺☻♊★⚤  ATTGT                60 chr22.bin8.cram:166:8410
-→↖⌘☯2☺☻♊★⚤  ATTGTGCCAAGTTCTTTC   60 chr22.bin8.cram:166:8436
-→↖⌘☯1☺☻♊★⚤  ATTGTGCCAAG----TTCTT 60 chr22.bin8.cram:166:8455
-←↗⌘☯1☺☻♊★⚤  ATTGTGCCAAG----TTCTT 60 chr22.bin8.cram:166:8390
-→↖⌘☯1☺☻♊★⚤  ATTGTGCCAAGTTCTTTCTT 60 chr22.bin8.cram:166:8457
-←↗⌘☯1☺☻♊★⚤  ATTGTGCCAAGTTCTTTCTT 60 chr22.bin8.cram:166:8436
-←↗⌘☯2☺☻♊★⚤  ATTGTGCCAAG----TTCTT 60 chr22.bin8.cram:166:8400
-→↖⌘☯2☺☻♊★⚤  ATTGTGCCAAG----TTCTT 60 chr22.bin8.cram:166:8460
-→↖⌘☯2☺☻♊★⚤       GCCAAGTTCTTTCTT 60 chr22.bin8.cram:166:8475
-←↗⌘☯1☺☻♊★⚤                   CTT 60 chr22.bin8.cram:166:8395
+reference   ATTGTGCCAAGTTCTTTCTT
+hap                   GTTCT     
+hap                   G----     
+s    xypzi  AT                   60 chr22.bin8.cram:166:8383
+s    xypzi  ATTGT                60 chr22.bin8.cram:166:8410
+ o   xypzi  ATTGTGCCAAGTTCTTTC   60 chr22.bin8.cram:166:8436
+ o  f ypzi  ATTGTGCCAAG----TTCTT 60 chr22.bin8.cram:166:8455
+s   f ypzi  ATTGTGCCAAG----TTCTT 60 chr22.bin8.cram:166:8390
+ o  f ypzi  ATTGTGCCAAGTTCTTTCTT 60 chr22.bin8.cram:166:8457
+s   f ypzi  ATTGTGCCAAGTTCTTTCTT 60 chr22.bin8.cram:166:8436
+s    xypzi  ATTGTGCCAAG----TTCTT 60 chr22.bin8.cram:166:8400
+ o   xypzi  ATTGTGCCAAG----TTCTT 60 chr22.bin8.cram:166:8460
+ o   xypzi       GCCAAGTTCTTTCTT 60 chr22.bin8.cram:166:8475
+s   f ypzi                   CTT 60 chr22.bin8.cram:166:8395
 ```
 
 We use six symbols to encode the MSA, `{ A, T, G, C, N, U, M }`, where `N` is the degenerate symbol (it could represent any of A, T, G, or C), `U` is a gap symbol required to normalize the MSA into a matrix, and `M` is a symbol indicating if we don't have any information at the position in the MSA.
@@ -100,7 +100,7 @@ The first entry in the line defines the class of the example. By convention, we 
 * `qcfail` : 1 if the read has failed some QC
 * `fmate` : 1 if the read is the first mate
 * `xmate` : 1 if the read is the second mate
-* `ymap` : 1 if the read is mapped
+* `ymap` : 1 if the mate is mapped (this mate must be mapped to be output)
 * `paired` : 1 if the read is paired
 * `zprimary` : 1 if the read is the "primary" alignment
 * `iproper` : 1 if the read is in a "proper" pair, in the expected configuration and distance from its mate

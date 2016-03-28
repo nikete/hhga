@@ -503,22 +503,22 @@ const string HHGA::str(void) {
         }
         out << endl;
     }
+
     size_t i = 0;
     for (auto& aln : alignments) {
         // skip removed alignments
         if (alignment_alleles.find(&aln) == alignment_alleles.end()) continue;
         // print out the stuff
-        if (aln.IsReverseStrand())     out << "←"; else out << "→";
-        if (aln.IsMateReverseStrand()) out << "↖"; else out << "↗";
-        if (aln.IsDuplicate())         out << "☣"; else out << "⌘";
-        if (aln.IsFailedQC())          out << "☍"; else out << "☯";
-        if (aln.IsFirstMate())         out << "1"; // else out << " ";
-        if (aln.IsSecondMate())        out << "2"; //else out << " ";
-        if (aln.IsMapped())            out << "☺"; else out << "☹";
-        if (aln.IsMateMapped())        out << "☻"; else out << "☹";
-        if (aln.IsPaired())            out << "♊"; else out << "♈";
-        if (aln.IsPrimaryAlignment())  out << "★"; else out << "☆";
-        if (aln.IsProperPair())        out << "⚤"; else out << "✗";
+        if (aln.IsReverseStrand())     out << "s"; else out << " ";
+        if (aln.IsMateReverseStrand()) out << "o"; else out << " ";
+        if (aln.IsDuplicate())         out << "d"; else out << " ";
+        if (aln.IsFailedQC())          out << "q"; else out << " ";
+        if (aln.IsFirstMate())         out << "f"; else out << " ";
+        if (aln.IsSecondMate())        out << "x"; else out << " ";
+        if (aln.IsMateMapped())        out << "y"; else out << " ";
+        if (aln.IsPaired())            out << "p"; else out << " ";
+        if (aln.IsPrimaryAlignment())  out << "z"; else out << " ";
+        if (aln.IsProperPair())        out << "i"; else out << " ";
         out << "  ";
         for (auto& allele : alignment_alleles[&aln]) {
             if (allele.alt == "M") out << " ";
