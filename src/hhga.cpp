@@ -579,7 +579,7 @@ const string HHGA::vw(void) {
         if (aln.IsDuplicate())         duplicate[name] = "1";
         if (aln.IsFailedQC())          failed_qc[name] = "1";
         if (aln.IsFirstMate())         first_mate[name] = "1";
-        if (aln.IsSecondMate())        second_mate[name] = "2";
+        if (aln.IsSecondMate())        second_mate[name] = "1";
         if (aln.IsMateMapped())        mate_mapped[name] = "1";
         if (aln.IsPaired())            paired[name] = "1";
         if (aln.IsPrimaryAlignment())  primary_aln[name] = "1";
