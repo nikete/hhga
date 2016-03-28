@@ -278,18 +278,30 @@ HHGA::HHGA(size_t window_length,
     for (auto& p : var.parsedAlternates()) {
         auto& valleles = vhaps[p.first];
         for (auto& a : p.second) {
-            //cerr << a << endl;
             if (a.ref == a.alt && a.alt.size() > 1) {
                 // break it apart
                 for (size_t i = 0; i < a.ref.size(); ++i) {
-                    valleles.push_back(allele_t(a.ref.substr(i,1), a.alt.substr(i,1), a.position+i-1, 1));
+                    valleles.push_back(allele_t(a.ref.substr(i,1),
+                                                a.alt.substr(i,1),
+                                                a.position+i-1, 1));
                 }
             } else {
                 // cluster insertions behind the previous base
                 if (a.ref.empty()) {
-                    valleles.push_back(allele_t(a.ref, a.alt, a.position-2, 1));
+                    valleles.push_back(allele_t(a.ref,
+                                                a.alt,
+                                                a.position-1, 1));
+                } else if (a.alt.empty()) {
+                    // deletions get broken into individual bases
+                    for (size_t i = 0; i < a.ref.size(); ++i) {
+                        valleles.push_back(allele_t(a.ref.substr(i,1),
+                                                    "U",
+                                                    a.position+i-1, 1));
+                    }
                 } else {
-                    valleles.push_back(allele_t(a.ref, a.alt, a.position-1, 1));
+                    valleles.push_back(allele_t(a.ref,
+                                                a.alt,
+                                                a.position-1, 1));
                 }
             }
         }
