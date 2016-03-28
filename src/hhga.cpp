@@ -182,7 +182,7 @@ HHGA::HHGA(size_t window_length,
         assert(aln.Qualities.size() == aln.QueryBases.size());
         for (string::iterator c = aln.Qualities.begin(); c != aln.Qualities.end(); ++c) {
             quals.push_back(
-                phred2float(
+                1-phred2float(
                     qualityChar2ShortInt(*c)));
         }
 
@@ -572,7 +572,7 @@ const string HHGA::vw(void) {
         if (alignment_alleles.find(&aln) == alignment_alleles.end()) continue;
         auto name = "aln" + std::to_string(i++);
         // handle mapping quality
-        mapq[name] = std::to_string(phred2float(min(aln.MapQuality, (uint16_t)60)));
+        mapq[name] = std::to_string(1-phred2float(min(aln.MapQuality, (uint16_t)60)));
         // handle flags
         if (aln.IsReverseStrand())     rev_strand[name] = "1";
         if (aln.IsMateReverseStrand()) mate_rev_strand[name] = "1";

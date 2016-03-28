@@ -27,41 +27,83 @@ Our primary interest is to approximate P(genotype|alignments), where the genotyp
 
 We represent the MSA of the reads and the reference, the estimated per-base errors, the read strands releative to the reference, the alignment mapping qualities, and the candidate haplotypes in the genotype of the sample at the locus using the namespaced libSVM format used by Vowpal Wabbit.
 
-As an example, if this is a tview-like representation of a set of alignments at a putative SNP site, augmented with candidate haplotypes:
+As an example, if this is a tview-like representation of a set of alignments at a putative SNP site, augmented with candidate haplotypes. Generated via `hhga -b minigiab/9251-9252.bam -f minigiab/q.fa -v minigiab/h.vcf.gz -r q:9251-9252 -w 20 -t` from the `test/` directory.
 
 ```txt
-           strand
-ref:  TA*T
-hap1: TA*T
-hap2: TGAT
-aln1: TA*T +
-aln2: TGAT +
-aln3:  GAT -
-aln4: TA   +
+reference   ATTGTGCCAAGTTCTTTCTT
+hap                   GTTCT     
+hap                   G----     
+←↗⌘☯2☺☻♊★⚤  AT                   60 chr22.bin8.cram:166:8383
+←↗⌘☯2☺☻♊★⚤  ATTGT                60 chr22.bin8.cram:166:8410
+→↖⌘☯2☺☻♊★⚤  ATTGTGCCAAGTTCTTTC   60 chr22.bin8.cram:166:8436
+→↖⌘☯1☺☻♊★⚤  ATTGTGCCAAG----TTCTT 60 chr22.bin8.cram:166:8455
+←↗⌘☯1☺☻♊★⚤  ATTGTGCCAAG----TTCTT 60 chr22.bin8.cram:166:8390
+→↖⌘☯1☺☻♊★⚤  ATTGTGCCAAGTTCTTTCTT 60 chr22.bin8.cram:166:8457
+←↗⌘☯1☺☻♊★⚤  ATTGTGCCAAGTTCTTTCTT 60 chr22.bin8.cram:166:8436
+←↗⌘☯2☺☻♊★⚤  ATTGTGCCAAG----TTCTT 60 chr22.bin8.cram:166:8400
+→↖⌘☯2☺☻♊★⚤  ATTGTGCCAAG----TTCTT 60 chr22.bin8.cram:166:8460
+→↖⌘☯2☺☻♊★⚤       GCCAAGTTCTTTCTT 60 chr22.bin8.cram:166:8475
+←↗⌘☯1☺☻♊★⚤                   CTT 60 chr22.bin8.cram:166:8395
 ```
 
 We use six symbols to encode the MSA, `{ A, T, G, C, N, U, M }`, where `N` is the degenerate symbol (it could represent any of A, T, G, or C), `U` is a gap symbol required to normalize the MSA into a matrix, and `M` is a symbol indicating if we don't have any information at the position in the MSA.
 
-Mapping quality and the strandedness of the reads are represented in two namespaces (mapq and strand).
+Various features of the reads are represented in other namespaces.
 
-Assuming the genotype is true, there are a mixture of 3 different error probabilities for the bases in the reads, two of the reads are on each strand, and the mapping qualities for the alignments are aln1: 60, aln2: 20, aln3: 50, aln4: 30, the feature space transformation of this site would be:
+The feature space transformation of this site would be given by `hhga -b minigiab/9251-9252.bam -f minigiab/q.fa -v minigiab/h.vcf.gz -r q:9251-9252 -w 20 -c 1`. The output will come on a single line.
 
 ```txt
-1 |ref    T:1 A:1 U:1 T:1
-  |hap1   T:1 A:1 U:1 T:1
-  |hap2   T:1 G:1 A:1 T:1
-  |mapq   aln1:60 aln2:20 aln3:50 aln4:30
-  |strand aln1:1 aln2:1 aln4:1
-  |aln1   T:0.94 A:0.91  U:1    T:0.991
-  |aln2   T:0.94 G:0.991 A:0.92 T:0.94
-  |aln3   M:1    G:0.94  A:0.97 T:0.94
-  |aln4   T:0.94 A:0.94  M:1    M:1
+1 |ref A:1 T:1 T:1 G:1 T:1 G:1 C:1 C:1 A:1 A:1 G:1 T:1 T:1 C:1 T:1 T:1 T:1 C:1 T:1 T:1 |hap0 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 G:1 T:1 T:1 C:1 T:1 M:1 M:1 M:1 M:1 M:1 |hap1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 G:1 U:1 U:1 U:1 U:1 M:1 M:1 M:1 M:1 M:1 |aln0 A:0.9998 T:0.999499 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 |aln1 A:0.9998 T:0.9998 T:0.9998 G:0.999499 T:0.999499 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 |aln2 A:0.9999 T:0.9999 T:0.99369 G:0.9998 T:0.9998 G:0.9998 C:0.9998 C:0.9998 A:0.9999 A:0.9998 G:0.9998 T:0.998005 T:0.999499 C:0.9999 T:0.9999 T:0.9998 T:0.9999 C:0.9998 M:1 M:1 |aln3 A:0.9999 T:0.9999 T:0.9999 G:0.9999 T:0.9999 G:0.9999 C:0.9999 C:0.9999 A:0.9999 A:0.999499 G:0.9999 U:0.9999 U:0.999499 U:0.9999 U:0.9999 T:0.9999 T:0.9999 C:0.9999 T:0.9999 T:0.9999 |aln4 A:0.9999 T:0.998005 T:0.9998 G:0.9999 T:0.9999 G:0.9999 C:0.9999 C:0.9999 A:0.9998 A:0.9999 G:0.9999 U:0.9998 U:0.9999 U:0.9999 U:0.9999 T:0.9999 T:0.9999 C:0.9999 T:0.9999 T:0.9999 |aln5 A:0.9999 T:0.9999 T:0.999499 G:0.999499 T:0.9999 G:0.9999 C:0.9999 C:0.9999 A:0.968377 A:0.999499 G:0.998005 T:0.999499 T:0.968377 C:0.9998 T:0.9999 T:0.9999 T:0.999499 C:0.9999 T:0.99369 T:0.9999 |aln6 A:0.9998 T:0.999499 T:0.9999 G:0.9998 T:0.9999 G:0.9999 C:0.9999 C:0.9999 A:0.9999 A:0.9999 G:0.9999 T:0.9999 T:0.9999 C:0.9998 T:0.9999 T:0.9999 T:0.9999 C:0.9999 T:0.9999 T:0.9999 |aln7 A:0.9999 T:0.9999 T:0.9998 G:0.9998 T:0.9999 G:0.9998 C:0.9999 C:0.9998 A:0.9998 A:0.9999 G:0.9998 U:0.9998 U:0.9999 U:0.9998 U:0.9999 T:0.9999 T:0.9998 C:0.9999 T:0.9998 T:0.9999 |aln8 A:0.9999 T:0.9999 T:0.9999 G:0.9999 T:0.9999 G:0.9999 C:0.9999 C:0.9999 A:0.9999 A:0.9999 G:0.9999 U:0.9999 U:0.9999 U:0.9999 U:0.9999 T:0.9999 T:0.9999 C:0.9999 T:0.9999 T:0.9999 |aln9 M:1 M:1 M:1 M:1 M:1 G:0.999499 C:0.9998 C:0.9998 A:0.9998 A:0.9998 G:0.9998 T:0.9999 T:0.9999 C:0.9999 T:0.9999 T:0.9999 T:0.9999 C:0.9999 T:0.9999 T:0.9999 |aln10 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 C:0.9998 T:0.9998 T:0.9998 |mapq aln0:0.999999 aln1:0.999999 aln10:0.999999 aln2:0.999999 aln3:0.999999 aln4:0.999999 aln5:0.999999 aln6:0.999999 aln7:0.999999 aln8:0.999999 aln9:0.999999 |strand aln0:1 aln1:1 aln10:1 aln4:1 aln6:1 aln7:1 |ostrand aln2:1 aln3:1 aln5:1 aln8:1 aln9:1 |dup |qcfail |fmate aln10:1 aln3:1 aln4:1 aln5:1 aln6:1 |xmate aln0:1 aln1:1 aln2:1 aln7:1 aln8:1 aln9:1 |ymap aln0:1 aln1:1 aln10:1 aln2:1 aln3:1 aln4:1 aln5:1 aln6:1 aln7:1 aln8:1 aln9:1 |paired aln0:1 aln1:1 aln10:1 aln2:1 aln3:1 aln4:1 aln5:1 aln6:1 aln7:1 aln8:1 aln9:1 |zprimary aln0:1 aln1:1 aln10:1 aln2:1 aln3:1 aln4:1 aln5:1 aln6:1 aln7:1 aln8:1 aln9:1 |iproper aln0:1 aln1:1 aln10:1 aln2:1 aln3:1 aln4:1 aln5:1 aln6:1 aln7:1 aln8:1 aln9:1 
 ```
 
-Newlines are included here only for legibility. This would be on one line of the output of HHGA.
+For viewing we can pipe the hhga format output through `sed s/\|/\\n\|/g` to convert the spaces into newlines.
+
+```txt
+1 
+|ref A:1 T:1 T:1 G:1 T:1 G:1 C:1 C:1 A:1 A:1 G:1 T:1 T:1 C:1 T:1 T:1 T:1 C:1 T:1 T:1 
+|hap0 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 G:1 T:1 T:1 C:1 T:1 M:1 M:1 M:1 M:1 M:1 
+|hap1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 G:1 U:1 U:1 U:1 U:1 M:1 M:1 M:1 M:1 M:1 
+|aln0 A:0.9998 T:0.999499 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 
+|aln1 A:0.9998 T:0.9998 T:0.9998 G:0.999499 T:0.999499 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 
+|aln2 A:0.9999 T:0.9999 T:0.99369 G:0.9998 T:0.9998 G:0.9998 C:0.9998 C:0.9998 A:0.9999 A:0.9998 G:0.9998 T:0.998005 T:0.999499 C:0.9999 T:0.9999 T:0.9998 T:0.9999 C:0.9998 M:1 M:1 
+|aln3 A:0.9999 T:0.9999 T:0.9999 G:0.9999 T:0.9999 G:0.9999 C:0.9999 C:0.9999 A:0.9999 A:0.999499 G:0.9999 U:0.9999 U:0.999499 U:0.9999 U:0.9999 T:0.9999 T:0.9999 C:0.9999 T:0.9999 T:0.9999 
+|aln4 A:0.9999 T:0.998005 T:0.9998 G:0.9999 T:0.9999 G:0.9999 C:0.9999 C:0.9999 A:0.9998 A:0.9999 G:0.9999 U:0.9998 U:0.9999 U:0.9999 U:0.9999 T:0.9999 T:0.9999 C:0.9999 T:0.9999 T:0.9999 
+|aln5 A:0.9999 T:0.9999 T:0.999499 G:0.999499 T:0.9999 G:0.9999 C:0.9999 C:0.9999 A:0.968377 A:0.999499 G:0.998005 T:0.999499 T:0.968377 C:0.9998 T:0.9999 T:0.9999 T:0.999499 C:0.9999 T:0.99369 T:0.9999 
+|aln6 A:0.9998 T:0.999499 T:0.9999 G:0.9998 T:0.9999 G:0.9999 C:0.9999 C:0.9999 A:0.9999 A:0.9999 G:0.9999 T:0.9999 T:0.9999 C:0.9998 T:0.9999 T:0.9999 T:0.9999 C:0.9999 T:0.9999 T:0.9999 
+|aln7 A:0.9999 T:0.9999 T:0.9998 G:0.9998 T:0.9999 G:0.9998 C:0.9999 C:0.9998 A:0.9998 A:0.9999 G:0.9998 U:0.9998 U:0.9999 U:0.9998 U:0.9999 T:0.9999 T:0.9998 C:0.9999 T:0.9998 T:0.9999 
+|aln8 A:0.9999 T:0.9999 T:0.9999 G:0.9999 T:0.9999 G:0.9999 C:0.9999 C:0.9999 A:0.9999 A:0.9999 G:0.9999 U:0.9999 U:0.9999 U:0.9999 U:0.9999 T:0.9999 T:0.9999 C:0.9999 T:0.9999 T:0.9999 
+|aln9 M:1 M:1 M:1 M:1 M:1 G:0.999499 C:0.9998 C:0.9998 A:0.9998 A:0.9998 G:0.9998 T:0.9999 T:0.9999 C:0.9999 T:0.9999 T:0.9999 T:0.9999 C:0.9999 T:0.9999 T:0.9999 
+|aln10 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 M:1 C:0.9998 T:0.9998 T:0.9998 
+|mapq aln0:0.999999 aln1:0.999999 aln10:0.999999 aln2:0.999999 aln3:0.999999 aln4:0.999999 aln5:0.999999 aln6:0.999999 aln7:0.999999 aln8:0.999999 aln9:0.999999 
+|strand aln0:1 aln1:1 aln10:1 aln4:1 aln6:1 aln7:1 
+|ostrand aln2:1 aln3:1 aln5:1 aln8:1 aln9:1 
+|dup 
+|qcfail 
+|fmate aln10:1 aln3:1 aln4:1 aln5:1 aln6:1 
+|xmate aln0:1 aln1:1 aln2:1 aln7:1 aln8:1 aln9:1 
+|ymap aln0:1 aln1:1 aln10:1 aln2:1 aln3:1 aln4:1 aln5:1 aln6:1 aln7:1 aln8:1 aln9:1 
+|paired aln0:1 aln1:1 aln10:1 aln2:1 aln3:1 aln4:1 aln5:1 aln6:1 aln7:1 aln8:1 aln9:1 
+|zprimary aln0:1 aln1:1 aln10:1 aln2:1 aln3:1 aln4:1 aln5:1 aln6:1 aln7:1 aln8:1 aln9:1 
+|iproper aln0:1 aln1:1 aln10:1 aln2:1 aln3:1 aln4:1 aln5:1 aln6:1 aln7:1 aln8:1 aln9:1 
+```
 
 The first entry in the line defines the class of the example. By convention, we say the example is 1 if the haplotypes are correct, and -1 otherwise.
 
+* `ref` : the reference
+* `hap0`: the first haplotype
+* `hap1`: the second haplotype
+* `aln*` : the alignments
+* `mapq` : p(mapping correct)
+* `strand` : 1 if reversed, 0 otherwise (not written)
+* `ostrand` : mate's strand, 1 if reversed
+* `dup` : 1 if the read is marked as a duplicate
+* `qcfail` : 1 if the read has failed some QC
+* `fmate` : 1 if the read is the first mate
+* `xmate` : 1 if the read is the second mate
+* `ymap` : 1 if the read is mapped
+* `paired` : 1 if the read is paired
+* `zprimary` : 1 if the read is the "primary" alignment
+* `iproper` : 1 if the read is in a "proper" pair, in the expected configuration and distance from its mate
 
 
 ## Usage
