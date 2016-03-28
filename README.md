@@ -111,7 +111,10 @@ The first entry in the line defines the class of the example. By convention, we 
 Sketch of usage. We extract the feature space representation using windows of size 100 at sites that are defined in the candidates in the variant input file. We use `truth.vcf.gz` to indicate which genotypes and alleles are true. All others in `vars.vcf.gz` are assumed false.
 
 ```bash
-hhga -t truth.vcf.gz -v vars.vcf.gz -w 100 -b aln.bam -f ref.fa | vw --save_resume  --ngram 5 --skips 3 --loss_function logistic --interactions rhmsa
+( hhga -v trues.vcf.gz  -w 100 -b aln.bam -f ref.fa -c 1 \
+  hhga -v falses.vcf.gz -w 100 -b aln.bam -f ref.fa -c -1 ) \
+    | shuf \
+    | vw --save_resume  --ngram 5 --skips 3 --loss_function logistic --interactions rhmsa
 ```
 
 ## Building
