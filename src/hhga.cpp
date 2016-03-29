@@ -129,7 +129,8 @@ HHGA::HHGA(size_t window_length,
            BamTools::BamMultiReader& bam_reader,
            FastaReference& fasta_ref,
            vcflib::Variant& var,
-           const string& class_label) {
+           const string& class_label,
+           bool show_ref) {
 
     label = class_label;
 
@@ -420,11 +421,26 @@ HHGA::HHGA(size_t window_length,
         hap = pad_alleles(hap, bal_min, bal_max);
     }
 
-    // get our new reference coordinates
-    // and build up the reference haplotype
-    // handling padding
-    
-    // build up the alternate haplotypes for the samples in the file
+    // optionally force the reference matching alleles to be R
+    if (!show_ref) {
+        for (auto a = alignment_alleles.begin(); a != alignment_alleles.end(); ++a) {
+            flatten_to_ref(a->second);
+        }
+        for (auto& hap : haplotypes) {
+            flatten_to_ref(hap);
+        }
+    }
+
+}
+
+void HHGA::flatten_to_ref(vector<allele_t>& alleles) {
+    for (auto& allele : alleles) {
+        if (allele.alt != "U"
+            && allele.alt != "M"
+            && allele.alt == allele.ref) {
+            allele.alt = "R";
+        }
+    }
 }
 
 void HHGA::project_positions(vector<allele_t>& aln_alleles,
@@ -497,6 +513,7 @@ const string HHGA::str(void) {
     for (auto& allele : reference) {
         if (allele.alt == "M") out << " ";
         else if (allele.alt == "U") out << "-";
+        else if (allele.alt == "R") out << ".";
         else out << allele.alt;
     }
     out << endl;
@@ -505,6 +522,7 @@ const string HHGA::str(void) {
         for (auto& allele : hap) {
             if (allele.alt == "M") out << " ";
             else if (allele.alt == "U") out << "-";
+            else if (allele.alt == "R") out << ".";
             else out << allele.alt;
         }
         out << endl;
@@ -529,6 +547,7 @@ const string HHGA::str(void) {
         for (auto& allele : alignment_alleles[&aln]) {
             if (allele.alt == "M") out << " ";
             else if (allele.alt == "U") out << "-";
+            else if (allele.alt == "R") out << ".";
             else out << allele.alt;
         }
         out << " " << aln.MapQuality;
@@ -581,7 +600,7 @@ const string HHGA::vw(void) {
         if (aln.IsProperPair())        out << "iproper:1"; else out << "iproper:0"; out << " ";
         // now alleles
         for (auto& allele : alignment_alleles[&aln]) {
-            out << allele.alt << ":" << allele.prob << " ";;
+            out << allele.alt << ":" << allele.prob << " ";
         }
     }
     return out.str();

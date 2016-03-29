@@ -93,13 +93,15 @@ public:
                                  pos_t bal_min, pos_t bal_max);
     void project_positions(vector<allele_t>& aln_alleles,
                            map<pair<int32_t, size_t>, size_t>& pos_proj);
+    void flatten_to_ref(vector<allele_t>& alleles);
 
     // construct the hhga of a particular region
     HHGA(size_t window_size,
          BamTools::BamMultiReader& bam_reader,
          FastaReference& fasta_ref,
          vcflib::Variant& var,
-         const string& class_label);
+         const string& class_label,
+         bool show_ref = false);
 
     const string str(void);
     const string vw(void);
