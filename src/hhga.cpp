@@ -148,7 +148,7 @@ HHGA::HHGA(size_t window_length,
     int32_t center_pos = var.position-1;//begin_pos + (end_pos - begin_pos) / 2;
 
     stringstream vrep;
-    vrep << var.sequenceName << ":" << var.position;
+    vrep << var.sequenceName << "_" << var.position;
     for (auto& s : var.alleles) vrep << "_" << s;
     repr = vrep.str();
 
@@ -542,7 +542,7 @@ const string HHGA::vw(void) {
     stringstream out;
     // write the class of the example
     out << label << " ";
-    out << "|what " << repr << " ";
+    out << "'" << repr << " ";
     // do the ref
     out << "|ref ";
     for (auto& allele : reference) {
