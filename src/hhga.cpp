@@ -564,15 +564,17 @@ const string HHGA::vw(void) {
     out << "'" << repr << " ";
     // do the ref
     out << "|ref ";
+    size_t idx = 0;
     for (auto& allele : reference) {
-        out << allele.alt << ":" << allele.prob << " ";;
+        out << ++idx << allele.alt << ":" << allele.prob << " ";;
     }
     // do the haps
     size_t i = 0;
     for (auto& hap : haplotypes) {
         out << "|hap" << i++ << " ";
+        idx = 0;
         for (auto& allele : hap) {
-            out << allele.alt << ":" << allele.prob << " ";;
+            out << ++idx << allele.alt << ":" << allele.prob << " ";;
         }
     }
 
@@ -599,8 +601,9 @@ const string HHGA::vw(void) {
         if (aln.IsPrimaryAlignment())  out << "zprimary:1"; else out << "zprimary:0"; out << " ";
         if (aln.IsProperPair())        out << "iproper:1"; else out << "iproper:0"; out << " ";
         // now alleles
+        idx = 0;
         for (auto& allele : alignment_alleles[&aln]) {
-            out << allele.alt << ":" << allele.prob << " ";
+            out << ++idx << allele.alt << ":" << allele.prob << " ";
         }
     }
     return out.str();
