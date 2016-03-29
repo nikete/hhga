@@ -72,6 +72,7 @@ public:
     string chrom_name;
     int32_t begin_pos;
     int32_t end_pos;
+    string repr; // for representing the site and variants
 
     typedef BamTools::BamAlignment alignment_t;
     //set<allele_t> alleles;

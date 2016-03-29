@@ -147,6 +147,11 @@ HHGA::HHGA(size_t window_length,
     string seq_name = var.sequenceName;
     int32_t center_pos = var.position-1;//begin_pos + (end_pos - begin_pos) / 2;
 
+    stringstream vrep;
+    vrep << var.sequenceName << ":" << var.position;
+    for (auto& s : var.alleles) vrep << "_" << s;
+    repr = vrep.str();
+
     // we'll use this later to cut and pad the matrix
     string window_ref_seq = fasta_ref.getSubSequence(seq_name, begin_pos, window_length);
 
@@ -487,6 +492,7 @@ vector<allele_t> HHGA::pad_alleles(vector<allele_t> aln_alleles,
 const string HHGA::str(void) {
     //return std::to_string(alleles.size());
     stringstream out;
+    out << repr << endl;
     out << "reference   ";
     for (auto& allele : reference) {
         if (allele.alt == "M") out << " ";
@@ -536,6 +542,7 @@ const string HHGA::vw(void) {
     stringstream out;
     // write the class of the example
     out << label << " ";
+    out << "|what " << repr << " ";
     // do the ref
     out << "|ref ";
     for (auto& allele : reference) {
