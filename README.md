@@ -121,4 +121,14 @@ The `hhga` executable is at `bin/hhga`.
 
 ## TODO
 
-Make this go, add a method to generate more training data per site by varying the length of the candidate haplotypes (e.g. full-window vs. just SNP view), add image output for debugging.
+- add another symbol for the soft clipping
+- add inputs beyond freebayes
+- find how to express challenge objectives as vw parametrization
+
+## FDA Challenge objectives
+
+"that all submitted accuracy comparisons reach a minimum threshold of 90% for each of the precision and the recall statistics."
+Precision (PPV)	(true positives) / (true positives + false positives)
+Recall (sensitivity)	(true positives) / (true positives + false negatives)
+F-measure	2 * precision * recall / (precision + recall)
+
