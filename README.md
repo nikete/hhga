@@ -124,6 +124,11 @@ The `hhga` executable is at `bin/hhga`.
 - add another symbol for the soft clipping
 - add inputs beyond freebayes
 - find how to express challenge objectives as vw parametrization
+- 
+
+### Options to add
+-- representation that chops off half of it that is redundant under 
+
 
 ## FDA Challenge objectives
 
